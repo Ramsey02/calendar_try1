@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'calendar_theme_mixin.dart'; // Import the mixin
 import 'profile_page.dart'; // Import profile page
 import 'course_list_panel.dart'; // Import course list panel
+import 'semester_diagram.dart'; // Import the new diagram widget
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -332,7 +333,7 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
 
   // Placeholder methods for other views
   Widget _buildDiagramView() {
-    return _buildPlaceholderView('Custom Diagram', Icons.timeline);
+    return const SemesterDiagram();
   }
 
   Widget _buildPrerequisitesDiagramView() {

@@ -4,7 +4,7 @@ import 'package:calendar_view/calendar_view.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';  // You'll need to create this file
-
+// import 'pages/course_diagram_page.dart';
 
 DateTime get _now => DateTime.now();
 
