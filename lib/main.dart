@@ -5,20 +5,38 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';  // You'll need to create this file
 
+
 DateTime get _now => DateTime.now();
 
 // Move the _events list above the main() function
+// Move the _events list above the main() function
 List<CalendarEventData> _events = [
   CalendarEventData(
-    date: _now,  // 
-    title: "algebra A \n nir ben david \n Ullman room 101",
-    titleStyle: TextStyle(),
-    description: "nir ben david, Ullman room 101",
+    date: _now,
+    title: "Electrical Circuit Theory",
+    description: "004401053 - Ullman room 101",
     startTime: DateTime(_now.year, _now.month, _now.day, 8, 0),
     endTime: DateTime(_now.year, _now.month, _now.day, 10, 0),
+    color: Colors.blue.shade700,
   ),
-
-  // Add more sample events as needed
+  
+  CalendarEventData(
+    date: _now,
+    title: "Physical Electronics",
+    description: "00440124 - Meyer Building room 305",
+    startTime: DateTime(_now.year, _now.month, _now.day, 12, 30),
+    endTime: DateTime(_now.year, _now.month, _now.day, 14, 0),
+    color: Colors.green.shade700,
+  ),
+  
+  CalendarEventData(
+    date: _now.add(const Duration(days: 1)), // Next day
+    title: "Semiconductor Device Basics",
+    description: "00440127 - EE Lab room 202",
+    startTime: DateTime(_now.year, _now.month, _now.day + 1, 10, 15),
+    endTime: DateTime(_now.year, _now.month, _now.day + 1, 11, 45),
+    color: Colors.purple.shade700,
+  ),
 ];
 
 void main() {
@@ -35,7 +53,7 @@ class MainApp extends StatelessWidget {
       child: MaterialApp(
         title: 'DegreEZ',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
+        theme: ThemeData.dark(),
         scrollBehavior: ScrollBehavior().copyWith(
           dragDevices: {
             PointerDeviceKind.trackpad,

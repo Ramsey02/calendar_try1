@@ -1,5 +1,8 @@
 import 'package:calendar_view/calendar_view.dart';
 import 'package:flutter/material.dart';
+import 'calendar_theme_mixin.dart'; // Import the mixin
+import 'profile_page.dart'; // Import profile page
+import 'course_list_panel.dart'; // Import course list panel
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -8,293 +11,383 @@ class HomePage extends StatefulWidget {
   HomePageState createState() => HomePageState();
 }
 
-class HomePageState extends State<HomePage> {
-  int _selectedNavIndex = 0; // 0: Calendar, 1: GPA, 2: Map, 3: Profile
+class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
+  String _currentPage = 'Calendar'; // Default page
   int _viewMode = 0; // 0: Week View, 1: Day View
-  String _searchQuery = ''; // Add this line to track search query
-  final TextEditingController _searchController = TextEditingController(); // Add controller
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  // Get the event controller
+  EventController get _eventController => 
+      CalendarControllerProvider.of(context).controller;
 
   @override
   void dispose() {
-    _searchController.dispose(); // Dispose the controller
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Different body content based on selected navigation item
+    // Build the body content based on selected page
     Widget body;
     
-    if (_selectedNavIndex == 0) {
-      // Calendar View with separate view mode handling
-      body = Column(
-        children: [
-          // Add Search Bar here - only visible in the Weekly View
-          if (_viewMode == 0)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search courses...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                              _searchQuery = '';
-                              // Here you would implement clearing search results
-                            });
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                    // Here you would implement the search functionality
-                    // For example: _searchCourses(value);
-                  });
-                },
-                onSubmitted: (value) {
-                  // Here you would implement search submission
-                  // For example: _fetchCoursesFromInternet(value);
-                },
-              ),
-            ),
-
-          // Custom tabs without TabController
-          Container(
-            color: Theme.of(context).primaryColor.withAlpha((0.1 * 255).toInt()),
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _viewMode = 0;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: _viewMode == 0 
-                              ? Theme.of(context).primaryColor 
-                              : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      child: const Text(
-                        'Week View',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _viewMode = 1;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: _viewMode == 1 
-                              ? Theme.of(context).primaryColor 
-                              : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      child: const Text(
-                        'Day View',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Calendar View based on selected view mode
-          Expanded(
-            child: _viewMode == 0
-              ? WeekView(
-                  weekDayBuilder: (date) {
-                    return Container(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        date.day.toString(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    );
-                  },
-                  eventTileBuilder: (date, events, boundary, startDuration, endDuration) {
-                    // Filter events based on search query if needed
-                    final filteredEvents = _searchQuery.isEmpty
-                        ? events
-                        : events.where((event) =>
-                            event.title.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-                    
-                    if (filteredEvents.isEmpty) return const SizedBox();
-                    
-                    return Container(
-                      margin: const EdgeInsets.all(2),
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        filteredEvents.first.title,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  },
-                )
-              : DayView(
-                  dayTitleBuilder: (date) {
-                    return Container(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        'Day: ${date.day}/${date.month}/${date.year}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    );
-                  },
-                  eventTileBuilder: (date, events, boundary, startDuration, endDuration) {
-                    if (events.isEmpty) return const SizedBox();
-                    
-                    return Container(
-                      margin: const EdgeInsets.all(2),
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        events.first.title,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  },
-                ),
-          ),
-        ],
-      );
-    } else if (_selectedNavIndex == 1) {
-      // GPA Calculator Page (placeholder)
-      body = const Center(
-        child: Text('GPA Calculator', style: TextStyle(fontSize: 24)),
-      );
-    } else if (_selectedNavIndex == 2) {
-      // Map Page (placeholder)
-      body = const Center(
-        child: Text('Campus Map', style: TextStyle(fontSize: 24)),
-      );
-    } else if (_selectedNavIndex == 3) {
-      // customized dashboard (placeholder)
-      body = const Center(
-        child: Text('customized dashboard', style: TextStyle(fontSize: 24)),
-      );
-    } else if (_selectedNavIndex == 4) {
-      // Chatbot Page (placeholder)
-      body = const Center(
-        child: Text('Chatbot', style: TextStyle(fontSize: 24)),
-      );
-    } else {
-      body = const Center(
-        child: Text('Unknown Page', style: TextStyle(fontSize: 24)),
-      );
-
-
+    switch (_currentPage) {
+      case 'Calendar':
+        body = _buildCalendarView();
+        break;
+      case 'Profile':
+        body = const ProfilePage();
+        break;
+      case 'Custom Diagram':
+        body = _buildDiagramView();
+        break;
+      case 'Prerequisites Diagram':
+        body = _buildPrerequisitesDiagramView();
+        break;
+      case 'Map':
+        body = _buildMapView();
+        break;
+      case 'Chatbot':
+        body = _buildChatbotView();
+        break;
+      case 'GPA Calculator':
+        body = _buildGpaCalculatorView();
+        break;
+      case 'Log Out':
+        // Handle logout functionality here
+        body = Center(child: Text('Logging out...'));
+        // You might want to implement actual logout logic
+        break;
+      case 'Credit':
+        body = _buildCreditView();
+        break;
+      default:
+        body = _buildCalendarView();
     }
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('DegreEZ'),
+        title: Text('DegreEZ - $_currentPage'),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person,color: Colors.black,),
+            icon: Icon(
+              Icons.star,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             onPressed: () {
-              // Navigate to settings page
-              print('profile clicked');
+              // ignore: avoid_print
+              print('ai clicked');
             },
           ),
         ],
       ),
+      drawer: _buildSideDrawer(),
       body: body,
-
-      floatingActionButton: _selectedNavIndex == 0
+      floatingActionButton: _currentPage == 'Calendar'
           ? FloatingActionButton(
               onPressed: () {
-                // Add event creation logic here
+                // ignore: avoid_print
                 print('Create new event');
+                // _showAddEventDialog();
               },
               child: const Icon(Icons.add),
             )
           : null,
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Calendar',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'GPA',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Map',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'customized dashboard',
-          ),
-          
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'chatbot',
-          ),
-        ],
-        currentIndex: _selectedNavIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedNavIndex = index;
-          });
-        },
+    );
+  }
+
+  // Build side drawer for navigation
+  Widget _buildSideDrawer() {
+    return Drawer(
+      child: Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 36,
+                    backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                    child: Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'DegreEZ',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _buildDrawerItem('Profile', Icons.person),
+            _buildDrawerItem('Calendar', Icons.calendar_today),
+            _buildDrawerItem('Custom Diagram', Icons.timeline),
+            _buildDrawerItem('Prerequisites Diagram', Icons.account_tree),
+            _buildDrawerItem('Map', Icons.map),
+            _buildDrawerItem('Chatbot', Icons.chat),
+            _buildDrawerItem('GPA Calculator', Icons.calculate),
+            const Divider(),
+            _buildDrawerItem('Log Out', Icons.logout),
+            _buildDrawerItem('Credit', Icons.info),
+          ],
+        ),
       ),
     );
   }
 
-  // Method stub for future implementation - to fetch course data from internet
-  void _fetchCoursesFromInternet(String query) {
-    // TODO: Implement API call to fetch course data
-    print('Searching for courses with query: $query');
-    // This will be replaced with actual API integration
+  // Helper method to build drawer items
+  Widget _buildDrawerItem(String title, IconData icon) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: _currentPage == title
+            ? Theme.of(context).colorScheme.secondary
+            : Theme.of(context).colorScheme.onSurface,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: _currentPage == title
+              ? Theme.of(context).colorScheme.secondary
+              : Theme.of(context).colorScheme.onSurface,
+          fontWeight: _currentPage == title ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      selected: _currentPage == title,
+      onTap: () {
+        setState(() {
+          _currentPage = title;
+        });
+        Navigator.pop(context); // Close the drawer
+      },
+    );
   }
+
+  // Calendar View - FULL IMPLEMENTATION
+  Widget _buildCalendarView() {
+    return Column(
+      children: [
+        // Add Search Bar here - only visible in the Weekly View
+        if (_viewMode == 0)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search courses...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+              onSubmitted: (value) {
+                _fetchCoursesFromInternet(value);
+              },
+            ),
+          ),
+
+        // Add the Course List Panel - NEW ADDITION
+        CourseListPanel(
+          eventController: _eventController,
+        ),
+
+        // Custom tabs without TabController
+        Container(
+          color: Theme.of(context).colorScheme.surface.withAlpha(25),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _viewMode = 0;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: _viewMode == 0 
+                            ? Theme.of(context).colorScheme.secondary 
+                            : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'Week View',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _viewMode == 0
+                            ? Theme.of(context).colorScheme.secondary
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _viewMode = 1;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: _viewMode == 1 
+                            ? Theme.of(context).colorScheme.secondary 
+                            : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'Day View',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _viewMode == 1
+                            ? Theme.of(context).colorScheme.secondary
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Calendar View based on selected view mode
+        Expanded(
+          child: _viewMode == 0
+            ? WeekView(
+                // Apply dark theme using the mixin
+                backgroundColor: getCalendarBackgroundColor(context),
+                headerStyle: getHeaderStyle(context),
+                weekDayBuilder: (date) => buildWeekDay(context, date),
+                timeLineBuilder: (date) => buildTimeLine(context, date),
+                liveTimeIndicatorSettings: getLiveTimeIndicatorSettings(context),
+                hourIndicatorSettings: getHourIndicatorSettings(context),
+                eventTileBuilder: (date, events, boundary, startDuration, endDuration) =>
+                  buildEventTile(
+                    context, date, events, boundary, startDuration, endDuration,
+                    filtered: true, searchQuery: _searchQuery
+                  ),
+              )
+            : DayView(
+                // Apply dark theme using the mixin
+                backgroundColor: getCalendarBackgroundColor(context),
+                dayTitleBuilder: (date) => buildDayHeader(context, date),
+                timeLineBuilder: (date) => buildTimeLine(context, date),
+                liveTimeIndicatorSettings: getLiveTimeIndicatorSettings(context),
+                hourIndicatorSettings: getHourIndicatorSettings(context),
+                eventTileBuilder: (date, events, boundary, startDuration, endDuration) =>
+                  buildEventTile(context, date, events, boundary, startDuration, endDuration),
+              ),
+        ),
+      ],
+    );
+  }
+
+  // Placeholder methods for other views
+  Widget _buildDiagramView() {
+    return _buildPlaceholderView('Custom Diagram', Icons.timeline);
+  }
+
+  Widget _buildPrerequisitesDiagramView() {
+    return _buildPlaceholderView('Prerequisites Diagram', Icons.account_tree);
+  }
+
+  Widget _buildMapView() {
+    return _buildPlaceholderView('Map', Icons.map);
+  }
+
+  Widget _buildChatbotView() {
+    return _buildPlaceholderView('Chatbot', Icons.chat);
+  }
+
+  Widget _buildGpaCalculatorView() {
+    return _buildPlaceholderView('GPA Calculator', Icons.calculate);
+  }
+
+  Widget _buildCreditView() {
+    return _buildPlaceholderView('Credit', Icons.info);
+  }
+
+  // Helper method to build placeholder views
+  Widget _buildPlaceholderView(String title, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 64,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 24,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coming soon',
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _fetchCoursesFromInternet(String value) {
+  // Implement your API call here
 }
