@@ -62,11 +62,11 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
         break;
       case 'Credit':
         body = _buildCreditView();
+        break;
       case 'Login':
-      body = const LoginPage();
-      // !! check why login and profile implemented this way
-      break;
-        default:
+        body = const LoginPage();
+        break;
+      default:
         body = _buildCalendarView();
     }
 
@@ -231,79 +231,176 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
         ),
 
         // Custom tabs without TabController
-        Container(
-          color: Theme.of(context).colorScheme.surface.withAlpha(25),
+
+        // Add this new widget: Day of Week Header Bar
+        // Add this new widget: Day of Week Header Bar
+// Custom tabs without TabController
+Container(
+  color: Theme.of(context).colorScheme.surface.withAlpha(25),
+  child: Row(
+    children: [
+      Expanded(
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _viewMode = 0;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: _viewMode == 0 
+                    ? Theme.of(context).colorScheme.secondary 
+                    : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Text(
+              'Week View',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: _viewMode == 0
+                    ? Theme.of(context).colorScheme.secondary
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+      Expanded(
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _viewMode = 1;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: _viewMode == 1 
+                    ? Theme.of(context).colorScheme.secondary 
+                    : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Text(
+              'Day View',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: _viewMode == 1
+                    ? Theme.of(context).colorScheme.secondary
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+
+// Add the day-of-week header only in Week View
+if (_viewMode == 0)
+  Container(
+    color: Theme.of(context).colorScheme.surface.withAlpha(15),
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: Row(
+      children: [
+        // Empty space to match the timeline column width
+        SizedBox(
+          width: 50, // Adjust this width to match your timeline column width
+          child: Container(), // Empty container
+        ),
+        // Days of the week
+        Expanded(
           child: Row(
-            children: [
+            children: const [
               Expanded(
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _viewMode = 0;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: _viewMode == 0 
-                            ? Theme.of(context).colorScheme.secondary 
-                            : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      'Week View',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: _viewMode == 0
-                            ? Theme.of(context).colorScheme.secondary
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
+                child: Text(
+                  'S',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
               ),
               Expanded(
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _viewMode = 1;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: _viewMode == 1 
-                            ? Theme.of(context).colorScheme.secondary 
-                            : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      'Day View',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: _viewMode == 1
-                            ? Theme.of(context).colorScheme.secondary
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
+                child: Text(
+                  'M',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'T',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'W',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'T',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'F',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'S',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
               ),
             ],
           ),
         ),
+      ],
+    ),
+  ), 
         
-        // Calendar View based on selected view mode
+        
         Expanded(
           child: _viewMode == 0
             ? WeekView(
@@ -319,6 +416,11 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
                     context, date, events, boundary, startDuration, endDuration,
                     filtered: true, searchQuery: _searchQuery
                   ),
+                startDay: WeekDays.sunday,
+                // minDay: DateTime(2025, 5, 11), // Set minimum date to a Sunday
+                // maxDay: DateTime(2025, 5, 17), // Set maximum date to a Saturday
+                startHour: 7, // Start at 7:00 AM
+                endHour: 24, // End at midnight (24:00) 
               )
             : DayView(
                 // Apply dark theme using the mixin
@@ -329,7 +431,10 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
                 hourIndicatorSettings: getHourIndicatorSettings(context),
                 eventTileBuilder: (date, events, boundary, startDuration, endDuration) =>
                   buildEventTile(context, date, events, boundary, startDuration, endDuration),
+                startHour: 7, // Start at 7:00 AM
+                endHour: 24, // End at midnight (24:00)
               ),
+              
         ),
       ],
     );
