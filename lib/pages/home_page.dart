@@ -4,7 +4,7 @@ import 'calendar_theme_mixin.dart'; // Import the mixin
 import 'profile_page.dart'; // Import profile page
 import 'course_list_panel.dart'; // Import course list panel
 import 'semester_diagram.dart'; // Import the new diagram widget
-
+import 'login_page.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -62,8 +62,11 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
         break;
       case 'Credit':
         body = _buildCreditView();
-        break;
-      default:
+      case 'Login':
+      body = const LoginPage();
+      // !! check why login and profile implemented this way
+      break;
+        default:
         body = _buildCalendarView();
     }
 
@@ -144,6 +147,7 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
             _buildDrawerItem('Chatbot', Icons.chat),
             _buildDrawerItem('GPA Calculator', Icons.calculate),
             const Divider(),
+            _buildDrawerItem('Login', Icons.login),
             _buildDrawerItem('Log Out', Icons.logout),
             _buildDrawerItem('Credit', Icons.info),
           ],
