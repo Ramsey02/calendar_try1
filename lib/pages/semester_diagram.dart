@@ -274,71 +274,139 @@ class _SemesterDiagramState extends State<SemesterDiagram> {
     );
   }
   
-  // Horizontal layout for landscape mode (new implementation)
-  Widget _buildHorizontalSemesterSection(BuildContext context, Map<String, dynamic> semester) {
-    double totalCredits = 0;
-    for (final course in semester['courses']) {
-      totalCredits += course['credits'];
-    }
+// Horizontal layout for landscape mode without scrolling
+Widget _buildHorizontalSemesterSection(BuildContext context, Map<String, dynamic> semester) {
+  double totalCredits = 0;
+  for (final course in semester['courses']) {
+    totalCredits += course['credits'];
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 20, bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Semester ${semester['semester']}',
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        margin: const EdgeInsets.only(top: 20, bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Semester ${semester['semester']}',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${totalCredits.toStringAsFixed(1)} credits',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
               ),
-              const SizedBox(width: 8),
+            ),
+          ],
+        ),
+      ),
+      // Non-scrollable row of courses that adjust their size
+      SizedBox(
+        height: 120,
+        child: Row(
+          children: List.generate(semester['courses'].length, (index) {
+            final course = semester['courses'][index];
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: _buildNonScrollableCourseCard(context, course),
+              ),
+            );
+          }),
+        ),
+      ),
+      const SizedBox(height: 10),
+      const Divider(),
+    ],
+  );
+}
+
+// Course card for non-scrollable layout
+Widget _buildNonScrollableCourseCard(BuildContext context, Map<String, dynamic> course) {
+  return Card(
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    color: course['color'],
+    child: Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  course['code'],
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '${totalCredits.toStringAsFixed(1)} credits',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  '${course['credits']}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-        ),
-        // Horizontal scrollable list of courses
-        SizedBox(
-          height: 120, // Fixed height for each course row
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: semester['courses'].length,
-            itemBuilder: (context, index) {
-              final course = semester['courses'][index];
-              return _buildHorizontalCourseCard(context, course);
-            },
+          Expanded(
+            child: Center(
+              child: Text(
+                course['name'],
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        const Divider(),
-      ],
-    );
-  }
-
+        ],
+      ),
+    ),
+  );
+} 
   // Vertical course card for portrait mode
   Widget _buildCourseCard(BuildContext context, Map<String, dynamic> course) {
     return Card(
