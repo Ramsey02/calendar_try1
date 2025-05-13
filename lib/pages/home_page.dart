@@ -78,7 +78,7 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
         actions: [
           IconButton(
             icon: Icon(
-              Icons.star,
+              Icons.bolt_sharp,
               color: Theme.of(context).colorScheme.onSurface,
             ),
             onPressed: () {
@@ -129,7 +129,7 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'DegreEZ',
+                    'John Doe',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
