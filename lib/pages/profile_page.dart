@@ -1,439 +1,528 @@
+// pages/profile_page.dart
+import 'package:calendar_try1/models/student_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/student_provider.dart';
 import '../services/auth_service.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+  const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  _ProfilePageState createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  
-  bool _isLoading = true;
-  Map<String, dynamic> _userData = {};
   final AuthService _authService = AuthService();
-  String get _userId => _authService.currentUser?.uid ?? 'user123';
-
+  bool _isEditing = false;
+  
+  // Controllers for editing
+  late TextEditingController _nameController;
+  late TextEditingController _majorController;
+  late TextEditingController _facultyController;
+  late TextEditingController _preferencesController;
+  late TextEditingController _semesterController;
+  late TextEditingController _catalogController;
+  
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
+    _initializeControllers();
   }
-
-  Future<void> _fetchUserData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('Students')
-          .doc(_userId)
-          .get();
-
-      if (docSnapshot.exists) {
-        setState(() {
-          _userData = docSnapshot.data() as Map<String, dynamic>;
-        });
-      } else {
-        // Create a default profile if none exists
-        final defaultProfile = {
-          'Id': _userId,
-          'Name': 'New User',
-          'Major': 'Select Major',
-          'Faculty': 'Select Faculty',
-          'GPA': 0.0,
-          'Semester': 1,
-          'Catalog': '2024-2025',
-          'Preferences': 'Default preferences',
-          'FirstSemester': 'Fall 2024',
-        };
-        
-        await FirebaseFirestore.instance
-            .collection('Students')
-            .doc(_userId)
-            .set(defaultProfile);
-            
-        setState(() {
-          _userData = defaultProfile;
-        });
-      }
-    } catch (e) {
-      print('Error fetching user data: $e');
-      // Show error message if needed
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+  
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _majorController.dispose();
+    _facultyController.dispose();
+    _preferencesController.dispose();
+    _semesterController.dispose();
+    _catalogController.dispose();
+    super.dispose();
+  }
+  
+  void _initializeControllers() {
+    final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+    final student = studentProvider.student;
+    
+    _nameController = TextEditingController(text: student?.name ?? '');
+    _majorController = TextEditingController(text: student?.major ?? '');
+    _facultyController = TextEditingController(text: student?.faculty ?? '');
+    _preferencesController = TextEditingController(text: student?.preferences ?? '');
+    _semesterController = TextEditingController(text: student?.semester.toString() ?? '1');
+    _catalogController = TextEditingController(text: student?.catalog ?? '');
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+    final studentProvider = Provider.of<StudentProvider>(context);
+    final student = studentProvider.student;
+    final isLoading = studentProvider.isLoading;
+    
+    if (isLoading) {
+      return Center(child: CircularProgressIndicator());
     }
-
+    
+    if (student == null) {
+      return _buildEmptyProfile();
+    }
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Profile Header with Avatar and Name
-          Center(
-            child: Column(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.secondary,
-                      width: 4.0,
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Theme.of(context).colorScheme.surface,
-                    child: Icon(
-                      Icons.person,
-                      size: 80,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _userData['Name'] ?? 'User',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                Text(
-                  _userData['Major'] ?? 'No Major Selected',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
+          _buildProfileHeader(),
           const SizedBox(height: 24),
-          
-          // GPA Card with visual indicator
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            color: Theme.of(context).colorScheme.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Current GPA',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _getGpaColor(_userData['GPA'] ?? 0.0),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          (_userData['GPA'] ?? 0.0).toString(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: (_userData['GPA'] ?? 0.0) / 100.0, // Assuming 100 scale
-                      minHeight: 10,
-                      backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(_getGpaColor(_userData['GPA'] ?? 0.0)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
+          _isEditing 
+              ? _buildEditForm() 
+              : _buildProfileDetails(student),
+          const SizedBox(height: 24),
+          _buildActionButtons(),
           const SizedBox(height: 16),
-          
-          // Academic Info Card
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            color: Theme.of(context).colorScheme.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Academic Information',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const Divider(),
-                  _buildInfoRow(context, 'Faculty', _userData['Faculty'] ?? 'Not Set', Icons.school),
-                  _buildInfoRow(context, 'Catalog', _userData['Catalog'] ?? 'Not Set', Icons.book),
-                  _buildInfoRow(
-                    context,
-                    'Current Semester', 
-                    'Semester ${_userData['Semester'] ?? 1}', 
-                    Icons.calendar_today
-                  ),
-                  _buildInfoRow(
-                    context,
-                    'First Semester', 
-                    _userData['FirstSemester'] ?? 'Not Set', 
-                    Icons.calendar_month
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Preferences Card
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            color: Theme.of(context).colorScheme.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Preferences',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      _userData['Preferences'] ?? 'No preferences set',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.9),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Edit Profile Button
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: () {
-                _showEditProfileDialog(context);
-              },
-              icon: const Icon(Icons.edit),
-              label: const Text('Edit Profile'),
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 4,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
+          _buildSemesterInfo(studentProvider),
         ],
       ),
     );
   }
-
-  // Helper method for GPA color
-  Color _getGpaColor(double gpa) {
-    if (gpa >= 85) return Colors.green;
-    if (gpa >= 75) return Colors.lightGreen;
-    if (gpa >= 65) return Colors.amber;
-    if (gpa >= 55) return Colors.orange;
-    return Colors.red;
+  
+  Widget _buildProfileHeader() {
+    return Center(
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+            child: Icon(
+              Icons.person,
+              size: 80,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Student Profile',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Manage your academic information',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
   }
-
-  // Helper method to build info rows
-  Widget _buildInfoRow(BuildContext context, String label, String value, IconData icon) {
+  
+  Widget _buildProfileDetails(student) {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('ID', student.id),
+            const Divider(),
+            _buildDetailRow('Name', student.name),
+            const Divider(),
+            _buildDetailRow('Major', student.major),
+            const Divider(),
+            _buildDetailRow('Faculty', student.faculty),
+            const Divider(),
+            _buildDetailRow('Preferences', student.preferences),
+            const Divider(),
+            _buildDetailRow('Current Semester', student.semester.toString()),
+            const Divider(),
+            _buildDetailRow('Catalog', student.catalog),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: Theme.of(context).colorScheme.secondary,
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+            ),
           ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ],
+            child: Text(
+              value.isNotEmpty ? value : 'Not specified',
+              style: value.isEmpty 
+                  ? TextStyle(fontStyle: FontStyle.italic, color: Colors.grey) 
+                  : null,
             ),
           ),
         ],
       ),
     );
   }
-
-  // Dialog to edit profile
-  void _showEditProfileDialog(BuildContext context) {
-    // Create controllers for each field
-    final nameController = TextEditingController(text: _userData['Name']);
-    final majorController = TextEditingController(text: _userData['Major']);
-    final facultyController = TextEditingController(text: _userData['Faculty']);
-    final catalogController = TextEditingController(text: _userData['Catalog']);
-    final semesterController = TextEditingController(text: _userData['Semester'].toString());
-    final preferencesController = TextEditingController(text: _userData['Preferences']);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          title: Text(
-            'Edit Profile',
+  
+  Widget _buildEditForm() {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTextField(_nameController, 'Name'),
+            _buildTextField(_majorController, 'Major'),
+            _buildTextField(_facultyController, 'Faculty'),
+            _buildTextField(_preferencesController, 'Preferences'),
+            _buildTextField(_semesterController, 'Current Semester', 
+                keyboardType: TextInputType.number),
+            _buildTextField(_catalogController, 'Catalog'),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildTextField(
+      TextEditingController controller, String label, 
+      {TextInputType keyboardType = TextInputType.text}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: keyboardType,
+      ),
+    );
+  }
+  
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (_isEditing) ...[
+          TextButton(
+            onPressed: _cancelEdit,
+            child: Text('Cancel'),
+          ),
+          SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: _saveProfile,
+            child: Text('Save'),
+          ),
+        ] else ...[
+          ElevatedButton(
+            onPressed: _startEditing,
+            child: Text('Edit Profile'),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  Widget _buildSemesterInfo(StudentProvider studentProvider) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Current Active Semester',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    studentProvider.currentSemester,
+                    style: TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.edit),
+                  onPressed: () => _changeSemester(studentProvider),
+                ),
+              ],
+            ),
+            FutureBuilder<double>(
+              future: _calculateGPA(studentProvider),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                }
+                
+                final gpa = snapshot.data ?? 0.0;
+                
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'Current GPA: ${gpa.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Future<double> _calculateGPA(StudentProvider studentProvider) async {
+    return studentProvider.calculateGPA(_authService.currentUser?.uid ?? '');
+  }
+  
+  Widget _buildEmptyProfile() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.person_off,
+            size: 64,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'No profile found',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          SizedBox(height: 8),
+          Text(
+            'Please create a profile to get started',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+          SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _createNewProfile,
+            child: Text('Create Profile'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _startEditing() {
+    setState(() {
+      _isEditing = true;
+    });
+  }
+  
+  void _cancelEdit() {
+    _initializeControllers(); // Reset controllers to current values
+    setState(() {
+      _isEditing = false;
+    });
+  }
+  
+  void _saveProfile() async {
+    final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+    final userId = _authService.currentUser?.uid ?? '';
+    
+    // Validate inputs
+    final semesterValue = int.tryParse(_semesterController.text);
+    if (semesterValue == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Semester must be a number')),
+      );
+      return;
+    }
+    
+    // Create updated data
+    Map<String, dynamic> updatedData = {
+      'Name': _nameController.text,
+      'Major': _majorController.text,
+      'Faculty': _facultyController.text,
+      'Preferences': _preferencesController.text,
+      'Semester': semesterValue,
+      'Catalog': _catalogController.text,
+    };
+    
+    try {
+      await studentProvider.updateStudentProfile(userId, updatedData);
+      setState(() {
+        _isEditing = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile updated successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating profile: $e')),
+      );
+    }
+  }
+  
+  void _createNewProfile() async {
+    // Show a dialog to get basic info
+    showDialog(
+      context: context,
+      builder: (context) {
+        final nameController = TextEditingController();
+        final majorController = TextEditingController();
+        final facultyController = TextEditingController();
+        
+        return AlertDialog(
+          title: Text('Create Profile'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
+                  decoration: InputDecoration(
+                    labelText: 'Name*',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
+                SizedBox(height: 16),
                 TextField(
                   controller: majorController,
-                  decoration: const InputDecoration(labelText: 'Major'),
+                  decoration: InputDecoration(
+                    labelText: 'Major*',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
+                SizedBox(height: 16),
                 TextField(
                   controller: facultyController,
-                  decoration: const InputDecoration(labelText: 'Faculty'),
-                ),
-                TextField(
-                  controller: catalogController,
-                  decoration: const InputDecoration(labelText: 'Catalog'),
-                ),
-                TextField(
-                  controller: semesterController,
-                  decoration: const InputDecoration(labelText: 'Current Semester'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: preferencesController,
-                  decoration: const InputDecoration(labelText: 'Preferences'),
-                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Faculty*',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
-                // Update Firestore with new values
-                try {
-                  await FirebaseFirestore.instance
-                      .collection('Students')
-                      .doc(_userId)
-                      .update({
-                    'Name': nameController.text,
-                    'Major': majorController.text,
-                    'Faculty': facultyController.text,
-                    'Catalog': catalogController.text,
-                    'Semester': int.tryParse(semesterController.text) ?? 1,
-                    'Preferences': preferencesController.text,
-                  });
-                  
-                  // Refresh data
-                  Navigator.of(context).pop();
-                  _fetchUserData();
-                } catch (e) {
-                  print('Error updating profile: $e');
-                  // Show error message
+                if (nameController.text.isEmpty || 
+                    majorController.text.isEmpty || 
+                    facultyController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please fill all required fields')),
+                  );
+                  return;
                 }
+                
+                final studentProvider = 
+                    Provider.of<StudentProvider>(context, listen: false);
+                final userId = _authService.currentUser?.uid ?? '';
+                
+                // Create student model
+                final student = createStudentModel(
+                  userId,
+                  nameController.text,
+                  majorController.text,
+                  facultyController.text,
+                );
+                
+                await studentProvider.createStudentProfile(userId, student);
+                Navigator.pop(context);
+                
+                // Refresh controllers with new data
+                _initializeControllers();
+                setState(() {});
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-              ),
-              child: const Text('Save'),
+              child: Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  // Helper to create a student model with default values
+  createStudentModel(String id, String name, String major, String faculty) {
+    return StudentModel(
+      id: id,
+      name: name,
+      major: major,
+      faculty: faculty,
+      preferences: '',
+      semester: 1,
+      catalog: 'Default Catalog 2024/25',
+    );
+  }
+  
+  void _changeSemester(StudentProvider studentProvider) {
+    // Show semester selection dialog
+    showDialog(
+      context: context,
+      builder: (context) {
+        final semesters = [
+          'Winter 2024/25',
+          'Spring 2024/25',
+          'Winter 2023/24',
+          'Spring 2023/24',
+        ];
+        
+        return AlertDialog(
+          title: Text('Select Semester'),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: semesters.length,
+              itemBuilder: (context, index) {
+                final semester = semesters[index];
+                final isSelected = semester == studentProvider.currentSemester;
+                
+                return ListTile(
+                  title: Text(semester),
+                  trailing: isSelected ? Icon(Icons.check) : null,
+                  onTap: () {
+                    studentProvider.setCurrentSemester(semester);
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
             ),
           ],
         );

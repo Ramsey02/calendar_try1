@@ -1,535 +1,547 @@
+// pages/semester_diagram.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/student_provider.dart';
+import '../services/auth_service.dart';
 
 class SemesterDiagram extends StatefulWidget {
-  const SemesterDiagram({Key? key}) : super(key: key);
+  const SemesterDiagram({super.key});
 
   @override
-  State<SemesterDiagram> createState() => _SemesterDiagramState();
+  _SemesterDiagramState createState() => _SemesterDiagramState();
 }
 
 class _SemesterDiagramState extends State<SemesterDiagram> {
-  // Sample data structure for semester courses
-  // In a real implementation, this would come from your backend or local database
-  final List<Map<String, dynamic>> semesters = [
-    {
-      'semester': 1,
-      'courses': [
-        {
-          'code': '03240033',
-          'name': 'אלגברה לינארית מ',
-          'credits': 3.0,
-          'color': Colors.blue.shade700,
-        },
-        {
-          'code': '01040031',
-          'name': 'חשבון אינפיניטסימלי 1מ',
-          'credits': 5.5,
-          'color': Colors.teal.shade700,
-        },
-        {
-          'code': '01040166',
-          'name': 'אלגברה אמ',
-          'credits': 5.5,
-          'color': Colors.amber.shade700,
-        },
-        {
-          'code': '03240114',
-          'name': 'מבוא למדעי המחשב מ',
-          'credits': 4.0,
-          'color': Colors.green.shade700,
-        },
-        {
-          'code': '03240129',
-          'name': 'מבוא לתורת הקבוצות ואוטומטים למדמח',
-          'credits': 3.0,
-          'color': Colors.purple.shade700,
-        },
-      ],
-    },
-    {
-      'semester': 2,
-      'courses': [
-        {
-          'code': '01140071',
-          'name': 'פיסיקה 1מל',
-          'credits': 3.5,
-          'color': Colors.orange.shade700,
-        },
-        {
-          'code': '01040032',
-          'name': 'חשבון אינפיניטסימלי 2מ',
-          'credits': 5.0,
-          'color': Colors.indigo.shade700,
-        },
-        {
-          'code': '02340125',
-          'name': 'אלגוריתמים נומריים',
-          'credits': 3.0,
-          'color': Colors.red.shade700,
-        },
-        {
-          'code': '02340124',
-          'name': 'מבוא לתכנות מערכות',
-          'credits': 4.0,
-          'color': Colors.cyan.shade700,
-        },
-        {
-          'code': '02340141',
-          'name': 'קומבינטוריקה למדעי המחשב',
-          'credits': 3.0,
-          'color': Colors.deepPurple.shade700,
-        },
-      ],
-    },
-    {
-      'semester': 3,
-      'courses': [
-        {
-          'code': '00940142',
-          'name': 'הסתברות מ',
-          'credits': 4.0,
-          'color': Colors.blue.shade800,
-        },
-        {
-          'code': '01040134',
-          'name': 'אלגברה מודרנית ח',
-          'credits': 2.5,
-          'color': Colors.teal.shade800,
-        },
-        {
-          'code': '02340292',
-          'name': 'לוגיקה למדעי המחשב',
-          'credits': 3.0,
-          'color': Colors.red.shade800,
-        },
-        {
-          'code': '02340218',
-          'name': 'מבני נתונים 1',
-          'credits': 3.0,
-          'color': Colors.green.shade800,
-        },
-        {
-          'code': '00440252',
-          'name': 'אמינות ובדיקות - תוכנה ונושאי המחשב',
-          'credits': 5.0,
-          'color': Colors.purple.shade800,
-        },
-      ],
-    },
-    {
-      'semester': 4,
-      'courses': [
-        {
-          'code': '02340247',
-          'name': 'אלגוריתמים 1',
-          'credits': 3.0,
-          'color': Colors.blue.shade900,
-        },
-        {
-          'code': '02340123',
-          'name': 'מערכות הפעלה',
-          'credits': 4.5,
-          'color': Colors.teal.shade900,
-        },
-        {
-          'code': '02340118',
-          'name': 'ארגון ותכנות המחשב',
-          'credits': 3.0,
-          'color': Colors.green.shade900,
-        },
-      ],
-    },
-    {
-      'semester': 5,
-      'courses': [
-        {
-          'code': '02340343',
-          'name': 'תורת החישוביות',
-          'credits': 3.0,
-          'color': Colors.orange.shade900,
-        },
-        {
-          'code': '02340267',
-          'name': 'מבנה מחשבים רב מעבדים',
-          'credits': 3.0,
-          'color': Colors.red.shade900,
-        },
-        {
-          'code': '02360360',
-          'name': 'תורת הקומפילציה',
-          'credits': 3.0,
-          'color': Colors.purple.shade900,
-        },
-      ],
-    },
-  ];
+  final AuthService _authService = AuthService();
+  List<Map<String, dynamic>> _courses = [];
+  bool _isLoading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadCourses();
+  }
+  
+  Future<void> _loadCourses() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+    final userId = _authService.currentUser?.uid ?? '';
+    
+    if (userId.isNotEmpty) {
+      try {
+        final courses = await studentProvider.getCourses(userId);
+        setState(() {
+          _courses = courses;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading courses: $e')),
+        );
+      }
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Detect device orientation
-    final orientation = MediaQuery.of(context).orientation;
+    final studentProvider = Provider.of<StudentProvider>(context);
     
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Degree Progress',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                itemCount: semesters.length,
-                itemBuilder: (context, index) {
-                  final semester = semesters[index];
-                  return orientation == Orientation.portrait
-                      ? _buildVerticalSemesterSection(context, semester)
-                      : _buildHorizontalSemesterSection(context, semester);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Vertical layout for portrait mode (original implementation)
-  Widget _buildVerticalSemesterSection(BuildContext context, Map<String, dynamic> semester) {
-    // Calculate total credits for this semester
-    double totalCredits = 0;
-    for (final course in semester['courses']) {
-      totalCredits += course['credits'];
-    }
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          margin: const EdgeInsets.only(top: 20, bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Semester ${semester['semester']}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${totalCredits.toStringAsFixed(1)} credits',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        _buildSemesterSelector(studentProvider),
+        Expanded(
+          child: _isLoading 
+              ? Center(child: CircularProgressIndicator())
+              : _courses.isEmpty
+                  ? _buildEmptyState()
+                  : _buildCourseDiagram(),
         ),
-        // Grid of courses
-        GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 1.6,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: semester['courses'].length,
-          itemBuilder: (context, index) {
-            final course = semester['courses'][index];
-            return _buildCourseCard(context, course);
-          },
-        ),
-        const SizedBox(height: 10),
-        const Divider(),
       ],
     );
   }
   
-// Horizontal layout for landscape mode without scrolling
-Widget _buildHorizontalSemesterSection(BuildContext context, Map<String, dynamic> semester) {
-  double totalCredits = 0;
-  for (final course in semester['courses']) {
-    totalCredits += course['credits'];
-  }
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        margin: const EdgeInsets.only(top: 20, bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Semester ${semester['semester']}',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${totalCredits.toStringAsFixed(1)} credits',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      // Non-scrollable row of courses that adjust their size
-      SizedBox(
-        height: 120,
-        child: Row(
-          children: List.generate(semester['courses'].length, (index) {
-            final course = semester['courses'][index];
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: _buildNonScrollableCourseCard(context, course),
-              ),
-            );
-          }),
-        ),
-      ),
-      const SizedBox(height: 10),
-      const Divider(),
-    ],
-  );
-}
-
-// Course card for non-scrollable layout
-Widget _buildNonScrollableCourseCard(BuildContext context, Map<String, dynamic> course) {
-  return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    color: course['color'],
-    child: Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildSemesterSelector(StudentProvider studentProvider) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  course['code'],
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${course['credits']}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Current Semester: ',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           Expanded(
-            child: Center(
-              child: Text(
-                course['name'],
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+            child: InkWell(
+              onTap: () => _changeSemester(studentProvider),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).colorScheme.primary),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      studentProvider.currentSemester,
+                      style: TextStyle(
+                        fontSize: 16,
+                      ),
+                    ),
+                    Icon(Icons.arrow_drop_down),
+                  ],
+                ),
               ),
             ),
+          ),
+          SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadCourses,
           ),
         ],
       ),
-    ),
-  );
-} 
-  // Vertical course card for portrait mode
-  Widget _buildCourseCard(BuildContext context, Map<String, dynamic> course) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    );
+  }
+  
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.timeline_outlined,
+            size: 64,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'No courses found',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Add courses to see your semester diagram',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+          SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              // Navigate back to calendar to add courses
+              Navigator.pop(context);
+            },
+            child: Text('Add Courses'),
+          ),
+        ],
       ),
-      color: course['color'],
+    );
+  }
+  
+  Widget _buildCourseDiagram() {
+    return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    course['code'],
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${course['credits']}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
             Text(
-              course['name'],
-              style: const TextStyle(
-                fontSize: 14,
+              'Semester Courses Diagram',
+              style: TextStyle(
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: 16),
+            // Course cards in a grid
+            GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.2,
+              ),
+              itemCount: _courses.length,
+              itemBuilder: (context, index) {
+                final course = _courses[index];
+                return _buildCourseCard(course);
+              },
             ),
           ],
         ),
       ),
     );
   }
-
-  // Horizontal course card for landscape mode
-  Widget _buildHorizontalCourseCard(BuildContext context, Map<String, dynamic> course) {
-    return Container(
-      width: 200, // Fixed width for horizontal cards
-      margin: const EdgeInsets.only(right: 12),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        color: course['color'],
+  
+  Widget _buildCourseCard(Map<String, dynamic> course) {
+    final Color cardColor = _getStatusColor(course['Status'] ?? 'Active');
+    
+    return Card(
+      elevation: 3,
+      color: cardColor.withOpacity(0.1),
+      child: InkWell(
+        onTap: () => _showCourseDetails(course),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Flexible(
-                    child: Text(
-                      course['code'],
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  SizedBox(width: 8),
+                  Expanded(
                     child: Text(
-                      '${course['credits']}',
-                      style: const TextStyle(
+                      course['Status'] ?? 'Active',
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        color: cardColor,
                       ),
                     ),
                   ),
                 ],
               ),
+              SizedBox(height: 8),
               Text(
-                course['name'],
-                style: const TextStyle(
-                  fontSize: 14,
+                course['Name'] ?? 'Unknown Course',
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
+              SizedBox(height: 4),
+              Text(
+                course['Course_Id'] ?? '',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              Spacer(),
+              if (course['Final_grade'] != null && 
+                  course['Final_grade'] is num && 
+                  course['Status'] == 'Completed')
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Grade: ${course['Final_grade']}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
       ),
+    );
+  }
+  
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Colors.green;
+      case 'completed':
+        return Colors.blue;
+      case 'planned':
+        return Colors.orange;
+      case 'failed':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  void _showCourseDetails(Map<String, dynamic> course) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                course['Name'] ?? 'Unknown Course',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Course ID: ${course['Course_Id'] ?? 'N/A'}',
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 16),
+              _buildDetailItem('Status', course['Status'] ?? 'Active'),
+              _buildDetailItem('Lecture Time', course['Lecture_time'] ?? 'Not specified'),
+              _buildDetailItem('Tutorial Time', course['Tutorial_time'] ?? 'Not specified'),
+              _buildDetailItem('Last Taken', course['Last_Semester_taken'] ?? 'Current semester'),
+              _buildDetailItem('Final Grade', 
+                course['Final_grade'] != null ? course['Final_grade'].toString() : 'Not graded'),
+              SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  OutlinedButton.icon(
+                    icon: Icon(Icons.edit),
+                    label: Text('Edit Status'),
+                    onPressed: () => _editCourseStatus(course),
+                  ),
+                  if (course['Status'] == 'Completed' || course['Status'] == 'Active')
+                    OutlinedButton.icon(
+                      icon: Icon(Icons.grade),
+                      label: Text('Set Grade'),
+                      onPressed: () => _setCourseGrade(course),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _editCourseStatus(Map<String, dynamic> course) {
+    final statusOptions = ['Active', 'Completed', 'Planned', 'Failed'];
+    final courseId = course['id'];
+    String selectedStatus = course['Status'] ?? 'Active';
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text('Update Course Status'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: statusOptions.map((status) {
+                return RadioListTile<String>(
+                  title: Text(status),
+                  value: status,
+                  groupValue: selectedStatus,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedStatus = value!;
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  
+                  final studentProvider = 
+                      Provider.of<StudentProvider>(context, listen: false);
+                  final userId = _authService.currentUser?.uid ?? '';
+                  
+                  // Update course status
+                  await studentProvider.updateCourse(
+                    userId, 
+                    courseId, 
+                    {'Status': selectedStatus},
+                  );
+                  
+                  // Refresh courses
+                  _loadCourses();
+                },
+                child: Text('Update'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+  
+  void _setCourseGrade(Map<String, dynamic> course) {
+    final courseId = course['id'];
+    final gradeController = TextEditingController(
+      text: course['Final_grade'] != null ? course['Final_grade'].toString() : '',
+    );
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Set Course Grade'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: gradeController,
+              decoration: InputDecoration(
+                labelText: 'Grade (0-100)',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Enter the final grade for this course',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final grade = double.tryParse(gradeController.text);
+              if (grade == null || grade < 0 || grade > 100) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please enter a valid grade (0-100)')),
+                );
+                return;
+              }
+              
+              Navigator.pop(context);
+              
+              final studentProvider = 
+                  Provider.of<StudentProvider>(context, listen: false);
+              final userId = _authService.currentUser?.uid ?? '';
+              
+              // Update course grade
+              Map<String, dynamic> updates = {
+                'Final_grade': grade,
+              };
+              
+              // Automatically set status to completed if grade is given
+              if (course['Status'] != 'Completed') {
+                updates['Status'] = 'Completed';
+              }
+              
+              await studentProvider.updateCourse(userId, courseId, updates);
+              
+              // Refresh courses
+              _loadCourses();
+            },
+            child: Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _changeSemester(StudentProvider studentProvider) {
+    // Show semester selection dialog
+    showDialog(
+      context: context,
+      builder: (context) {
+        final semesters = [
+          'Winter 2024/25',
+          'Spring 2024/25',
+          'Winter 2023/24',
+          'Spring 2023/24',
+        ];
+        
+        return AlertDialog(
+          title: Text('Select Semester'),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: semesters.length,
+              itemBuilder: (context, index) {
+                final semester = semesters[index];
+                final isSelected = semester == studentProvider.currentSemester;
+                
+                return ListTile(
+                  title: Text(semester),
+                  trailing: isSelected ? Icon(Icons.check) : null,
+                  onTap: () {
+                    studentProvider.setCurrentSemester(semester);
+                    Navigator.pop(context);
+                    // Reload courses for the new semester
+                    _loadCourses();
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -32,7 +32,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       });
 
       try {
-        await _authService.resetPassword(_emailController.text.trim());
+        await _authService.sendPasswordResetEmail(_emailController.text.trim());
         setState(() {
           _isSuccess = true;
           _message = 'Password reset link sent to your email.';

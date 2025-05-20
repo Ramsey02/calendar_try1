@@ -1,3 +1,4 @@
+// main.dart
 import 'dart:ui';
 
 import 'package:calendar_view/calendar_view.dart';
@@ -11,100 +12,6 @@ import 'wrappers/auth_wrapper.dart';
 import 'pages/register_page.dart';
 import 'pages/forgot_password_page.dart';
 
-DateTime get _now => DateTime.now();
-
-// Move the _events list above the main() function
-// Move the _events list above the main() function
-
-/*
-List<CalendarEventData> _events = [
-  CalendarEventData(
-    date: _now,
-    
-    title: "Electrical Circuit Theory",
-    description: "004401053 - Ullman room 101",
-    startTime: DateTime(_now.year, _now.month, _now.day, 8, 0),
-    endTime: DateTime(_now.year, _now.month, _now.day, 10, 0),
-    color: Colors.blue.shade700,
-  ),
-  
-  CalendarEventData(
-    date: _now,
-    title: "Physical Electronics",
-    description: "00440124 - Meyer Building room 305",
-    startTime: DateTime(_now.year, _now.month, _now.day, 12, 30),
-    endTime: DateTime(_now.year, _now.month, _now.day, 14, 0),
-    color: Colors.green.shade700,
-  ),
-  
-  CalendarEventData(
-    date: _now.add(const Duration(days: 1)), // Next day
-    title: "Semiconductor Device Basics",
-    description: "00440127 - EE Lab room 202",
-    startTime: DateTime(_now.year, _now.month, _now.day + 1, 10, 15),
-    endTime: DateTime(_now.year, _now.month, _now.day + 1, 11, 45),
-    color: Colors.purple.shade700,
-  ),
-];
-*/
-
-// void main() {
-//   runApp(const MainApp());
-// }
-
-// void main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp();
-//   runApp(const MainApp());
-// }
-
-
-// void main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp();
-//   runApp(MaterialApp(home: FirebaseTest()));
-// }
-
-/*
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => StudentProvider()),
-      ],
-      child: const MainApp(),
-    ),
-  );
-}
-
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return CalendarControllerProvider(
-      controller: EventController()..addAll(_events),
-      child: MaterialApp(
-        title: 'DegreEZ',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        scrollBehavior: ScrollBehavior().copyWith(
-          dragDevices: {
-            PointerDeviceKind.trackpad,
-            PointerDeviceKind.mouse,
-            PointerDeviceKind.touch,
-          },
-        ),
-        home: HomePage(),
-      ),
-    );
-  }
-}
-*/
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -117,18 +24,66 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CalendarControllerProvider(
-      controller: EventController(),
-      child: MaterialApp(
-        title: 'DegreEZ',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => AuthWrapper(),
-          '/register': (context) => RegisterPage(),
-          '/forgot-password': (context) => ForgotPasswordPage(),
-        },
+    // Put the MultiProvider at the root of the app
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => StudentProvider()),
+      ],
+      child: CalendarControllerProvider(
+        controller: EventController(),
+        child: MaterialApp(
+          title: 'DegreEZ',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData.dark().copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: Colors.blue.shade600,
+              secondary: Colors.teal.shade300,
+              surface: Colors.grey.shade900,
+              background: Colors.black,
+            ),
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.grey.shade900,
+              elevation: 0,
+            ),
+            cardTheme: CardTheme(
+              color: Colors.grey.shade800,
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.grey.shade800,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.teal.shade300, width: 2),
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal.shade300,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          scrollBehavior: ScrollBehavior().copyWith(
+            dragDevices: {
+              PointerDeviceKind.trackpad,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.touch,
+            },
+          ),
+          initialRoute: '/',
+          routes: {
+            '/': (context) => AuthWrapper(),
+            '/register': (context) => RegisterPage(),
+            '/forgot-password': (context) => ForgotPasswordPage(),
+          },
+        ),
       ),
     );
   }

@@ -40,11 +40,9 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       try {
-        await _authService.registerWithEmailAndPassword(
+        await _authService.createUserWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text,
-          _nameController.text.trim(),
-          _majorController.text.trim(),
         );
         // No need to navigate - AuthWrapper will handle it
       } catch (e) {

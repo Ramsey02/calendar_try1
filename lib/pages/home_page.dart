@@ -1,13 +1,16 @@
+// pages/home_page.dart
 import 'package:calendar_view/calendar_view.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'calendar_theme_mixin.dart'; // Import the mixin
-import 'profile_page.dart'; // Import profile page
-import 'course_list_panel.dart'; // Import course list panel
-import 'semester_diagram.dart'; // Import the new diagram widget
+import 'package:provider/provider.dart';
+import 'calendar_theme_mixin.dart';
+import 'profile_page.dart';
+import 'course_list_panel.dart';
+import 'semester_diagram.dart';
 import 'login_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'gpa_calculator_page.dart';
 import '../services/auth_service.dart';
+import '../providers/student_provider.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -21,22 +24,30 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
   int _viewMode = 0; // 0: Week View, 1: Day View
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  bool _isLoading = false;
-  String get _userId => _authService.currentUser?.uid ?? 'user123';
+  bool _dataInitialized = false;
 
-  String _currentSemester = 'Winter 2024/25'; // Replace with current semester logic
-
-  // Firestore instance
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // Get the event controller
-  EventController get _eventController => 
-      CalendarControllerProvider.of(context).controller;
+  String get _userId => _authService.currentUser?.uid ?? '';
 
   @override
   void initState() {
     super.initState();
-    _fetchEvents();
+    // Do NOT fetch data here, we'll do it in didChangeDependencies
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This is a safer place to initialize data that depends on InheritedWidgets like Provider
+    if (!_dataInitialized && _userId.isNotEmpty) {
+      _dataInitialized = true; // Set flag to avoid multiple initializations
+      // Schedule the data fetch for after this build cycle completes
+      Future.microtask(() {
+        if (mounted) { // Check if widget is still in the tree
+          final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+          studentProvider.fetchStudentData(_userId);
+        }
+      });
+    }
   }
 
   @override
@@ -45,281 +56,162 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
     super.dispose();
   }
 
-  // Fetch events from Firestore
-  Future<void> _fetchEvents() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Clear existing events
-      _eventController.events.clear();
-
-      // Fetch the current semester document
-      final semesterDoc = await _firestore
-          .collection('Students')
-          .doc(_userId)
-          .collection('Courses-per-Semesters')
-          .doc(_currentSemester)
-          .get();
-
-      if (semesterDoc.exists) {
-        // Fetch all courses for this semester
-        final coursesSnapshot = await _firestore
-            .collection('Students')
-            .doc(_userId)
-            .collection('Courses-per-Semesters')
-            .doc(_currentSemester)
-            .collection('Courses')
-            .get();
-
-        if (coursesSnapshot.docs.isNotEmpty) {
-          final now = DateTime.now();
-          List<CalendarEventData> events = [];
-
-          for (var courseDoc in coursesSnapshot.docs) {
-            final courseData = courseDoc.data();
-            
-            // Handle lecture time events
-            if (courseData['Lecture_time'] != null) {
-              final lectureEvents = _parseTimeToEvents(
-                courseData['Name'] ?? 'Unknown Course',
-                courseData['Lecture_time'],
-                now,
-                Colors.blue.shade700,
-                '${courseData['Course_Id']} - Lecture'
-              );
-              events.addAll(lectureEvents);
-            }
-            
-            // Handle tutorial time events
-            if (courseData['Tutorial_time'] != null) {
-              final tutorialEvents = _parseTimeToEvents(
-                courseData['Name'] ?? 'Unknown Course',
-                courseData['Tutorial_time'],
-                now,
-                Colors.green.shade700,
-                '${courseData['Course_Id']} - Tutorial'
-              );
-              events.addAll(tutorialEvents);
-            }
-          }
-          
-          // Add all events to the controller
-          _eventController.addAll(events);
-        }
-      } else {
-        // Create default semester if it doesn't exist
-        await _firestore
-            .collection('Students')
-            .doc(_userId)
-            .collection('Courses-per-Semesters')
-            .doc(_currentSemester)
-            .set({
-          'Semester Number': 1,
-        });
-        
-        // Add some default events if needed
-        _addDefaultEvents();
-      }
-    } catch (e) {
-      print('Error fetching events: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Helper to parse time strings into events
-  List<CalendarEventData> _parseTimeToEvents(
-      String title, String timeString, DateTime baseDate, Color color, String description) {
-    // This is a simplified parser - you'll need to adapt it based on your time format
-    // Example format: "Monday 10:00-12:00"
-    List<CalendarEventData> events = [];
+  // Dialog to add a new event
+  void _showAddCourseDialog() {
+    final titleController = TextEditingController();
+    final courseIdController = TextEditingController();
+    final lectureTimeController = TextEditingController();
+    final tutorialTimeController = TextEditingController();
+    final creditsController = TextEditingController();
     
-    try {
-      // Split by comma for multiple time slots
-      final timeSlots = timeString.split(',');
-      
-      for (var slot in timeSlots) {
-        slot = slot.trim();
-        
-        // Extract day and time
-        final parts = slot.split(' ');
-        if (parts.length < 2) continue;
-        
-        final day = parts[0].toLowerCase();
-        final timePart = parts[1];
-        
-        // Parse time range
-        final timeRange = timePart.split('-');
-        if (timeRange.length < 2) continue;
-        
-        final startTimeParts = timeRange[0].split(':');
-        final endTimeParts = timeRange[1].split(':');
-        
-        if (startTimeParts.length < 2 || endTimeParts.length < 2) continue;
-        
-        final startHour = int.tryParse(startTimeParts[0]) ?? 0;
-        final startMinute = int.tryParse(startTimeParts[1]) ?? 0;
-        final endHour = int.tryParse(endTimeParts[0]) ?? 0;
-        final endMinute = int.tryParse(endTimeParts[1]) ?? 0;
-        
-        // Map day string to day of week (0 = Sunday, 1 = Monday, etc.)
-        int dayOfWeek;
-        switch (day) {
-          case 'sunday': dayOfWeek = 0; break;
-          case 'monday': dayOfWeek = 1; break;
-          case 'tuesday': dayOfWeek = 2; break;
-          case 'wednesday': dayOfWeek = 3; break;
-          case 'thursday': dayOfWeek = 4; break;
-          case 'friday': dayOfWeek = 5; break;
-          case 'saturday': dayOfWeek = 6; break;
-          default: continue; // Skip if day is invalid
-        }
-        
-        // Calculate event date (find the next occurrence of this day)
-        final eventDate = _findNextDayOfWeek(baseDate, dayOfWeek);
-        
-        // Create event
-        events.add(CalendarEventData(
-          date: eventDate,
-          title: title,
-          description: description,
-          startTime: DateTime(
-            eventDate.year, 
-            eventDate.month, 
-            eventDate.day, 
-            startHour, 
-            startMinute
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add New Course'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: 'Course Name*'),
+              ),
+              TextField(
+                controller: courseIdController,
+                decoration: InputDecoration(labelText: 'Course ID*'),
+              ),
+              TextField(
+                controller: lectureTimeController,
+                decoration: InputDecoration(
+                  labelText: 'Lecture Time*',
+                  hintText: 'Example: Monday 10:00-12:00',
+                ),
+              ),
+              TextField(
+                controller: tutorialTimeController,
+                decoration: InputDecoration(
+                  labelText: 'Tutorial Time (optional)',
+                  hintText: 'Example: Wednesday 14:00-15:30',
+                ),
+              ),
+              TextField(
+                controller: creditsController,
+                decoration: InputDecoration(
+                  labelText: 'Credits',
+                  hintText: '3.0',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 16),
+              Text(
+                '* Required fields',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-          endTime: DateTime(
-            eventDate.year, 
-            eventDate.month, 
-            eventDate.day, 
-            endHour, 
-            endMinute
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
           ),
-          color: color,
-        ));
-      }
-    } catch (e) {
-      print('Error parsing time: $e');
-    }
-    
-    return events;
-  }
-
-  // Helper to find the next occurrence of a day of week
-  DateTime _findNextDayOfWeek(DateTime date, int dayOfWeek) {
-    DateTime result = DateTime(date.year, date.month, date.day);
-    int daysToAdd = (dayOfWeek - date.weekday) % 7;
-    if (daysToAdd == 0) {
-      daysToAdd = 7; // If today is the target day, get next week
-    }
-    return result.add(Duration(days: daysToAdd));
-  }
-
-  // Add some default events for demonstration
-  void _addDefaultEvents() {
-    final now = DateTime.now();
-    final events = [
-      CalendarEventData(
-        date: now,
-        title: "Electrical Circuit Theory",
-        description: "004401053 - Ullman room 101",
-        startTime: DateTime(now.year, now.month, now.day, 8, 0),
-        endTime: DateTime(now.year, now.month, now.day, 10, 0),
-        color: Colors.blue.shade700,
+          ElevatedButton(
+            onPressed: () async {
+              if (titleController.text.isEmpty || 
+                  courseIdController.text.isEmpty ||
+                  lectureTimeController.text.isEmpty) {
+                // Show validation error
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please fill all required fields')),
+                );
+                return;
+              }
+              
+              final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+              final credits = double.tryParse(creditsController.text) ?? 3.0;
+              
+              // Create course data object following the structure
+              Map<String, dynamic> courseData = {
+                'Name': titleController.text,
+                'Course_Id': courseIdController.text,
+                'Lecture_time': lectureTimeController.text,
+                'Tutorial_time': tutorialTimeController.text,
+                'Credits': credits,
+                'Status': 'Active',
+                'Final_grade': 0,
+                'Last_Semester_taken': studentProvider.currentSemester,
+                'Success_Rate': 0, // Default value, can be calculated later
+              };
+              
+              // Add course using the provider
+              String? courseId = await studentProvider.addCourse(_userId, courseData);
+              
+              if (courseId != null) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Course added successfully')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to add course: ${studentProvider.error}')),
+                );
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
       ),
-      
-      CalendarEventData(
-        date: now,
-        title: "Physical Electronics",
-        description: "00440124 - Meyer Building room 305",
-        startTime: DateTime(now.year, now.month, now.day, 12, 30),
-        endTime: DateTime(now.year, now.month, now.day, 14, 0),
-        color: Colors.green.shade700,
-      ),
-    ];
-    
-    _eventController.addAll(events);
-  }
-
-  // Search for courses in Firestore
-  void _fetchCoursesFromInternet(String query) async {
-    if (query.isEmpty) return;
-    
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
-      // This is a simplified search - you'll need to adapt based on your actual data structure
-      final results = await _firestore
-          .collection('Students')
-          .doc(_userId)
-          .collection('Courses-per-Semesters')
-          .doc(_currentSemester)
-          .collection('Courses')
-          .where('Name', isGreaterThanOrEqualTo: query)
-          .where('Name', isLessThanOrEqualTo: query + '\uf8ff')
-          .get();
-      
-      // Process search results
-      print('Found ${results.docs.length} courses matching "$query"');
-      
-      // You could display these results in a dialog or panel
-    } catch (e) {
-      print('Error searching for courses: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Access the provider
+    final studentProvider = Provider.of<StudentProvider>(context);
+    final studentName = studentProvider.student?.name ?? 'User';
+    final isLoading = studentProvider.isLoading;
+    
     // Build the body content based on selected page
     Widget body;
     
     switch (_currentPage) {
       case 'Calendar':
-        body = _buildCalendarView();
+        body = _buildCalendarView(context, studentProvider);
         break;
       case 'Profile':
-        body = const ProfilePage();
+        body = ProfilePage();
         break;
       case 'Custom Diagram':
-        body = _buildDiagramView();
+        body = SemesterDiagram();
         break;
       case 'Prerequisites Diagram':
-        body = _buildPrerequisitesDiagramView();
+        body = _buildPlaceholderView('Prerequisites Diagram', Icons.account_tree);
         break;
       case 'Map':
-        body = _buildMapView();
+        body = _buildPlaceholderView('Map', Icons.map);
         break;
       case 'Chatbot':
-        body = _buildChatbotView();
+        body = _buildPlaceholderView('Chatbot', Icons.chat);
         break;
       case 'GPA Calculator':
-        body = _buildGpaCalculatorView();
+        body = _buildPlaceholderView('GPA Calculator', Icons.calculate);
         break;
       case 'Log Out':
-        // Handle logout functionality here
+        // Handle logout functionality
+        _handleLogout();
         body = Center(child: Text('Logging out...'));
-        // You might want to implement actual logout logic
         break;
       case 'Credit':
-        body = _buildCreditView();
+        body = _buildPlaceholderView('Credit', Icons.info);
         break;
       case 'Login':
-        body = const LoginPage();
+        body = LoginPage();
         break;
       default:
-        body = _buildCalendarView();
+        body = _buildCalendarView(context, studentProvider);
     }
 
     return Scaffold(
@@ -334,20 +226,20 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
               color: Theme.of(context).colorScheme.onSurface,
             ),
             onPressed: () {
-              // ignore: avoid_print
+              // AI functionality
               print('ai clicked');
             },
           ),
         ],
       ),
-      drawer: _buildSideDrawer(),
-      body: _isLoading 
+      drawer: _buildSideDrawer(context, studentName),
+      body: isLoading 
           ? Center(child: CircularProgressIndicator())
           : body,
       floatingActionButton: _currentPage == 'Calendar'
           ? FloatingActionButton(
               onPressed: () {
-                _showAddEventDialog();
+                _showAddCourseDialog();
               },
               child: const Icon(Icons.add),
             )
@@ -355,102 +247,17 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
     );
   }
 
-void _handleLogout() async {
-  try {
-    await _authService.signOut();
-    // AuthWrapper will handle navigation after logout
-  } catch (e) {
-    print('Error signing out: $e');
-  }
-}
-  // Dialog to add a new event
-  void _showAddEventDialog() {
-    final titleController = TextEditingController();
-    final courseIdController = TextEditingController();
-    final lectureTimeController = TextEditingController();
-    final tutorialTimeController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add New Course'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(labelText: 'Course Name'),
-              ),
-              TextField(
-                controller: courseIdController,
-                decoration: InputDecoration(labelText: 'Course ID'),
-              ),
-              TextField(
-                controller: lectureTimeController,
-                decoration: InputDecoration(
-                  labelText: 'Lecture Time',
-                  hintText: 'Example: Monday 10:00-12:00',
-                ),
-              ),
-              TextField(
-                controller: tutorialTimeController,
-                decoration: InputDecoration(
-                  labelText: 'Tutorial Time (optional)',
-                  hintText: 'Example: Wednesday 14:00-15:30',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleController.text.isEmpty || courseIdController.text.isEmpty) {
-                // Show validation error
-                return;
-              }
-              
-              try {
-                // Add to Firestore
-                final courseRef = await _firestore
-                    .collection('Students')
-                    .doc(_userId)
-                    .collection('Courses-per-Semesters')
-                    .doc(_currentSemester)
-                    .collection('Courses')
-                    .add({
-                  'Name': titleController.text,
-                  'Course_Id': courseIdController.text,
-                  'Lecture_time': lectureTimeController.text,
-                  'Tutorial_time': tutorialTimeController.text,
-                  'Status': 'Active',
-                  'Final_grade': 0,
-                  'Last_Semester_taken': _currentSemester,
-                });
-                
-                Navigator.pop(context);
-                
-                // Refresh events
-                _fetchEvents();
-              } catch (e) {
-                print('Error adding course: $e');
-                // Show error message
-              }
-            },
-            child: Text('Add'),
-          ),
-        ],
-      ),
-    );
+  void _handleLogout() async {
+    try {
+      await _authService.signOut();
+      // AuthWrapper will handle navigation after logout
+    } catch (e) {
+      print('Error signing out: $e');
+    }
   }
 
   // Build side drawer for navigation
-  Widget _buildSideDrawer() {
+  Widget _buildSideDrawer(BuildContext context, String studentName) {
     return Drawer(
       child: Container(
         color: Theme.of(context).colorScheme.surface,
@@ -474,35 +281,13 @@ void _handleLogout() async {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  FutureBuilder<DocumentSnapshot>(
-                    future: _firestore.collection('Students').doc(_userId).get(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Text('Loading...',
-                          style: TextStyle(color: Colors.white),
-                        );
-                      }
-                      
-                      if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
-                        return Text('User',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        );
-                      }
-                      
-                      final userData = snapshot.data!.data() as Map<String, dynamic>;
-                      return Text(
-                        userData['Name'] ?? 'User',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    },
+                  Text(
+                    studentName,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -525,34 +310,38 @@ void _handleLogout() async {
   }
 
   // Helper method to build drawer items
-Widget _buildDrawerItem(String title, IconData icon, {Function()? onTap}) {
-  return ListTile(
-    leading: Icon(
-      icon,
-      color: _currentPage == title
-          ? Theme.of(context).colorScheme.secondary
-          : Theme.of(context).colorScheme.onSurface,
-    ),
-    title: Text(
-      title,
-      style: TextStyle(
+  Widget _buildDrawerItem(String title, IconData icon, {Function()? onTap}) {
+    return ListTile(
+      leading: Icon(
+        icon,
         color: _currentPage == title
             ? Theme.of(context).colorScheme.secondary
             : Theme.of(context).colorScheme.onSurface,
-        fontWeight: _currentPage == title ? FontWeight.bold : FontWeight.normal,
       ),
-    ),
-    selected: _currentPage == title,
-    onTap: onTap ?? () {
-      setState(() {
-        _currentPage = title;
-      });
-      Navigator.pop(context); // Close the drawer
-    },
-  );
-}
+      title: Text(
+        title,
+        style: TextStyle(
+          color: _currentPage == title
+              ? Theme.of(context).colorScheme.secondary
+              : Theme.of(context).colorScheme.onSurface,
+          fontWeight: _currentPage == title ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      selected: _currentPage == title,
+      onTap: onTap ?? () {
+        setState(() {
+          _currentPage = title;
+        });
+        Navigator.pop(context); // Close the drawer
+      },
+    );
+  }
+
   // Calendar View - FULL IMPLEMENTATION
-  Widget _buildCalendarView() {
+  Widget _buildCalendarView(BuildContext context, StudentProvider studentProvider) {
+    // Access the event controller from the provider
+    final eventController = studentProvider.eventController;
+
     return Column(
       children: [
         // Add Search Bar here - only visible in the Weekly View
@@ -587,14 +376,14 @@ Widget _buildDrawerItem(String title, IconData icon, {Function()? onTap}) {
                 });
               },
               onSubmitted: (value) {
-                _fetchCoursesFromInternet(value);
+                _searchCourses(value);
               },
             ),
           ),
 
-        // Add the Course List Panel - NEW ADDITION
+        // Add the Course List Panel
         CourseListPanel(
-          eventController: _eventController,
+          eventController: eventController,
         ),
 
         // Custom tabs without TabController
@@ -763,67 +552,315 @@ Widget _buildDrawerItem(String title, IconData icon, {Function()? onTap}) {
             ),
           ), 
           
-          
+        // Calendar view content
         Expanded(
-          child: _viewMode == 0
-            ? WeekView(
-                // Apply dark theme using the mixin
-                backgroundColor: getCalendarBackgroundColor(context),
-                headerStyle: getHeaderStyle(context),
-                weekDayBuilder: (date) => buildWeekDay(context, date),
-                timeLineBuilder: (date) => buildTimeLine(context, date),
-                liveTimeIndicatorSettings: getLiveTimeIndicatorSettings(context),
-                hourIndicatorSettings: getHourIndicatorSettings(context),
-                eventTileBuilder: (date, events, boundary, startDuration, endDuration) =>
-                  buildEventTile(
-                    context, date, events, boundary, startDuration, endDuration,
-                    filtered: true, searchQuery: _searchQuery
-                  ),
-                startDay: WeekDays.sunday,
-                startHour: 7, // Start at 7:00 AM
-                endHour: 24, // End at midnight (24:00) 
-              )
-            : DayView(
-                // Apply dark theme using the mixin
-                backgroundColor: getCalendarBackgroundColor(context),
-                dayTitleBuilder: (date) => buildDayHeader(context, date),
-                timeLineBuilder: (date) => buildTimeLine(context, date),
-                liveTimeIndicatorSettings: getLiveTimeIndicatorSettings(context),
-                hourIndicatorSettings: getHourIndicatorSettings(context),
-                eventTileBuilder: (date, events, boundary, startDuration, endDuration) =>
-                  buildEventTile(context, date, events, boundary, startDuration, endDuration),
-                startHour: 7, // Start at 7:00 AM
-                endHour: 24, // End at midnight (24:00)
-              ),
-              
+          child: CalendarControllerProvider(
+            controller: eventController,
+            child: _viewMode == 0
+              ? WeekView(
+                  // Apply dark theme using the mixin
+                  backgroundColor: getCalendarBackgroundColor(context),
+                  headerStyle: getHeaderStyle(context),
+                  weekDayBuilder: (date) => buildWeekDay(context, date),
+                  timeLineBuilder: (date) => buildTimeLine(context, date),
+                  liveTimeIndicatorSettings: getLiveTimeIndicatorSettings(context),
+                  hourIndicatorSettings: getHourIndicatorSettings(context),
+                  eventTileBuilder: (date, events, boundary, startDuration, endDuration) =>
+                    buildEventTile(
+                      context, date, events, boundary, startDuration, endDuration,
+                      filtered: true, searchQuery: _searchQuery
+                    ),
+                  startDay: WeekDays.sunday,
+                  startHour: 7, // Start at 7:00 AM
+                  endHour: 24, // End at midnight (24:00)
+                  onEventTap: (events, date) => _showEventDetails(events, date),
+                )
+              : DayView(
+                  // Apply dark theme using the mixin
+                  backgroundColor: getCalendarBackgroundColor(context),
+                  dayTitleBuilder: (date) => buildDayHeader(context, date),
+                  timeLineBuilder: (date) => buildTimeLine(context, date),
+                  liveTimeIndicatorSettings: getLiveTimeIndicatorSettings(context),
+                  hourIndicatorSettings: getHourIndicatorSettings(context),
+                  eventTileBuilder: (date, events, boundary, startDuration, endDuration) =>
+                    buildEventTile(context, date, events, boundary, startDuration, endDuration),
+                  startHour: 7, // Start at 7:00 AM
+                  endHour: 24, // End at midnight (24:00)
+                  onEventTap: (events, date) => _showEventDetails(events, date),
+                ),
+          ),
         ),
       ],
     );
   }
 
-  // Placeholder methods for other views
-  Widget _buildDiagramView() {
-    return const SemesterDiagram();
+  // Show event details and allow editing/deleting
+  void _showEventDetails(List<CalendarEventData> events, DateTime date) {
+    if (events.isEmpty) return;
+    
+    // Get the first event
+    final event = events.first;
+    final courseId = event.event as String?; // The course ID is stored in the event field
+    
+    if (courseId == null) return;
+    
+    // Show details and options in a bottom sheet
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event.title,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(event.description ?? ''),
+              SizedBox(height: 8),
+              Text('${_formatDateTime(event.startTime!)} - ${_formatDateTime(event.endTime!)}'),
+              SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _editCourse(courseId);
+                    },
+                    child: Text('Edit'),
+                  ),
+                  SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _deleteCourse(courseId);
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                    child: Text('Delete'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildPrerequisitesDiagramView() {
-    return _buildPlaceholderView('Prerequisites Diagram', Icons.account_tree);
+  // Format date and time for display
+  String _formatDateTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
-  Widget _buildMapView() {
-    return _buildPlaceholderView('Map', Icons.map);
+  // Edit a course
+  void _editCourse(String courseId) async {
+    final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+    final courses = await studentProvider.getCourses(_userId);
+    final course = courses.firstWhere((c) => c['id'] == courseId, orElse: () => {});
+    
+    if (course.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Course not found')),
+      );
+      return;
+    }
+    
+    final titleController = TextEditingController(text: course['Name']);
+    final courseIdController = TextEditingController(text: course['Course_Id']);
+    final lectureTimeController = TextEditingController(text: course['Lecture_time']);
+    final tutorialTimeController = TextEditingController(text: course['Tutorial_time']);
+    final creditsController = TextEditingController(text: (course['Credits'] ?? 3.0).toString());
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Course'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: 'Course Name*'),
+              ),
+              TextField(
+                controller: courseIdController,
+                decoration: InputDecoration(labelText: 'Course ID*'),
+              ),
+              TextField(
+                controller: lectureTimeController,
+                decoration: InputDecoration(
+                  labelText: 'Lecture Time*',
+                  hintText: 'Example: Monday 10:00-12:00',
+                ),
+              ),
+              TextField(
+                controller: tutorialTimeController,
+                decoration: InputDecoration(
+                  labelText: 'Tutorial Time (optional)',
+                  hintText: 'Example: Wednesday 14:00-15:30',
+                ),
+              ),
+              TextField(
+                controller: creditsController,
+                decoration: InputDecoration(
+                  labelText: 'Credits',
+                  hintText: '3.0',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (titleController.text.isEmpty || 
+                  courseIdController.text.isEmpty ||
+                  lectureTimeController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please fill all required fields')),
+                );
+                return;
+              }
+              
+              Map<String, dynamic> updatedData = {
+                'Name': titleController.text,
+                'Course_Id': courseIdController.text,
+                'Lecture_time': lectureTimeController.text,
+                'Tutorial_time': tutorialTimeController.text,
+                'Credits': double.tryParse(creditsController.text) ?? 3.0,
+              };
+              
+              bool success = await studentProvider.updateCourse(_userId, courseId, updatedData);
+              
+              Navigator.pop(context);
+              
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Course updated successfully')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to update course: ${studentProvider.error}')),
+                );
+              }
+            },
+            child: Text('Update'),
+          ),
+        ],
+      ),
+    );
   }
 
-  Widget _buildChatbotView() {
-    return _buildPlaceholderView('Chatbot', Icons.chat);
+  // Delete a course with confirmation
+  void _deleteCourse(String courseId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Course'),
+        content: Text('Are you sure you want to delete this course?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+              bool success = await studentProvider.deleteCourse(_userId, courseId);
+              
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Course deleted successfully')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to delete course: ${studentProvider.error}')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
-  Widget _buildGpaCalculatorView() {
-    return _buildPlaceholderView('GPA Calculator', Icons.calculate);
-  }
-
-  Widget _buildCreditView() {
-    return _buildPlaceholderView('Credit', Icons.info);
+  // Search for courses
+  void _searchCourses(String query) async {
+    if (query.isEmpty) return;
+    
+    final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+    final courses = await studentProvider.getCourses(_userId);
+    
+    // Filter courses based on search query
+    final filteredCourses = courses.where((course) {
+      final name = course['Name']?.toString().toLowerCase() ?? '';
+      final id = course['Course_Id']?.toString().toLowerCase() ?? '';
+      final searchLower = query.toLowerCase();
+      
+      return name.contains(searchLower) || id.contains(searchLower);
+    }).toList();
+    
+    if (filteredCourses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No courses found matching "$query"')),
+      );
+      return;
+    }
+    
+    // Show search results in a dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Search Results'),
+        content: Container(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: filteredCourses.length,
+            itemBuilder: (context, index) {
+              final course = filteredCourses[index];
+              return ListTile(
+                title: Text(course['Name'] ?? 'Unknown Course'),
+                subtitle: Text(course['Course_Id'] ?? ''),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editCourse(course['id']);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Helper method to build placeholder views
