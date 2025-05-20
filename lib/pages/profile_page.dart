@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/student_provider.dart';
+import '../services/auth_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -11,9 +12,11 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  
   bool _isLoading = true;
   Map<String, dynamic> _userData = {};
-  String _userId = 'user123'; // Replace with actual user ID from auth
+  final AuthService _authService = AuthService();
+  String get _userId => _authService.currentUser?.uid ?? 'user123';
 
   @override
   void initState() {

@@ -6,7 +6,8 @@ import 'profile_page.dart'; // Import profile page
 import 'course_list_panel.dart'; // Import course list panel
 import 'semester_diagram.dart'; // Import the new diagram widget
 import 'login_page.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -15,12 +16,14 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
+  final AuthService _authService = AuthService();
   String _currentPage = 'Calendar'; // Default page
   int _viewMode = 0; // 0: Week View, 1: Day View
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
-  String _userId = 'user123'; // Replace with actual user ID from auth
+  String get _userId => _authService.currentUser?.uid ?? 'user123';
+
   String _currentSemester = 'Winter 2024/25'; // Replace with current semester logic
 
   // Firestore instance
@@ -352,6 +355,14 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
     );
   }
 
+void _handleLogout() async {
+  try {
+    await _authService.signOut();
+    // AuthWrapper will handle navigation after logout
+  } catch (e) {
+    print('Error signing out: $e');
+  }
+}
   // Dialog to add a new event
   void _showAddEventDialog() {
     final titleController = TextEditingController();
@@ -505,7 +516,7 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
             _buildDrawerItem('GPA Calculator', Icons.calculate),
             const Divider(),
             _buildDrawerItem('Login', Icons.login),
-            _buildDrawerItem('Log Out', Icons.logout),
+            _buildDrawerItem('Log Out', Icons.logout, onTap: _handleLogout),
             _buildDrawerItem('Credit', Icons.info),
           ],
         ),
@@ -514,33 +525,32 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
   }
 
   // Helper method to build drawer items
-  Widget _buildDrawerItem(String title, IconData icon) {
-    return ListTile(
-      leading: Icon(
-        icon,
+Widget _buildDrawerItem(String title, IconData icon, {Function()? onTap}) {
+  return ListTile(
+    leading: Icon(
+      icon,
+      color: _currentPage == title
+          ? Theme.of(context).colorScheme.secondary
+          : Theme.of(context).colorScheme.onSurface,
+    ),
+    title: Text(
+      title,
+      style: TextStyle(
         color: _currentPage == title
             ? Theme.of(context).colorScheme.secondary
             : Theme.of(context).colorScheme.onSurface,
+        fontWeight: _currentPage == title ? FontWeight.bold : FontWeight.normal,
       ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: _currentPage == title
-              ? Theme.of(context).colorScheme.secondary
-              : Theme.of(context).colorScheme.onSurface,
-          fontWeight: _currentPage == title ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      selected: _currentPage == title,
-      onTap: () {
-        setState(() {
-          _currentPage = title;
-        });
-        Navigator.pop(context); // Close the drawer
-      },
-    );
-  }
-
+    ),
+    selected: _currentPage == title,
+    onTap: onTap ?? () {
+      setState(() {
+        _currentPage = title;
+      });
+      Navigator.pop(context); // Close the drawer
+    },
+  );
+}
   // Calendar View - FULL IMPLEMENTATION
   Widget _buildCalendarView() {
     return Column(

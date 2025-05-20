@@ -3,17 +3,20 @@ import 'dart:ui';
 import 'package:calendar_view/calendar_view.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'pages/home_page.dart';  // You'll need to create this file
-// import 'pages/course_diagram_page.dart';
+import 'pages/home_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'providers/student_provider.dart';
-import 'test_firebase.dart';
+import 'wrappers/auth_wrapper.dart';
+import 'pages/register_page.dart';
+import 'pages/forgot_password_page.dart';
 
 DateTime get _now => DateTime.now();
 
 // Move the _events list above the main() function
 // Move the _events list above the main() function
+
+/*
 List<CalendarEventData> _events = [
   CalendarEventData(
     date: _now,
@@ -27,7 +30,6 @@ List<CalendarEventData> _events = [
   
   CalendarEventData(
     date: _now,
-    
     title: "Physical Electronics",
     description: "00440124 - Meyer Building room 305",
     startTime: DateTime(_now.year, _now.month, _now.day, 12, 30),
@@ -44,6 +46,7 @@ List<CalendarEventData> _events = [
     color: Colors.purple.shade700,
   ),
 ];
+*/
 
 // void main() {
 //   runApp(const MainApp());
@@ -55,6 +58,14 @@ List<CalendarEventData> _events = [
 //   runApp(const MainApp());
 // }
 
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp();
+//   runApp(MaterialApp(home: FirebaseTest()));
+// }
+
+/*
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -68,12 +79,6 @@ void main() async {
     ),
   );
 }
-
-// void main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp();
-//   runApp(MaterialApp(home: FirebaseTest()));
-// }
 
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
@@ -94,6 +99,36 @@ class MainApp extends StatelessWidget {
           },
         ),
         home: HomePage(),
+      ),
+    );
+  }
+}
+*/
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CalendarControllerProvider(
+      controller: EventController(),
+      child: MaterialApp(
+        title: 'DegreEZ',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => AuthWrapper(),
+          '/register': (context) => RegisterPage(),
+          '/forgot-password': (context) => ForgotPasswordPage(),
+        },
       ),
     );
   }
