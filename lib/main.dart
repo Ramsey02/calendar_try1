@@ -8,6 +8,7 @@ import 'pages/home_page.dart';  // You'll need to create this file
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'providers/student_provider.dart';
+import 'test_firebase.dart';
 
 DateTime get _now => DateTime.now();
 
@@ -16,6 +17,7 @@ DateTime get _now => DateTime.now();
 List<CalendarEventData> _events = [
   CalendarEventData(
     date: _now,
+    
     title: "Electrical Circuit Theory",
     description: "004401053 - Ullman room 101",
     startTime: DateTime(_now.year, _now.month, _now.day, 8, 0),
@@ -25,6 +27,7 @@ List<CalendarEventData> _events = [
   
   CalendarEventData(
     date: _now,
+    
     title: "Physical Electronics",
     description: "00440124 - Meyer Building room 305",
     startTime: DateTime(_now.year, _now.month, _now.day, 12, 30),
@@ -65,6 +68,13 @@ void main() async {
     ),
   );
 }
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp();
+//   runApp(MaterialApp(home: FirebaseTest()));
+// }
+
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 

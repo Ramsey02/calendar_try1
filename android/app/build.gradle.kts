@@ -3,12 +3,15 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") 
 }
 
 android {
-    namespace = "com.example.calendar_try1"
+    namespace = "com.technion.android.calendar_try1"
     compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
     ndkVersion = "27.0.12077973"
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -21,13 +24,14 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.calendar_try1"
+        applicationId = "com.technion.android.calendar_try1"
         // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-build-configuration.
+        
+        minSdk = 23
+        versionCode = flutter.versionCode.toInt()
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
     buildTypes {
