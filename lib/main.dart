@@ -5,6 +5,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';  // You'll need to create this file
 // import 'pages/course_diagram_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
+import 'providers/student_provider.dart';
 
 DateTime get _now => DateTime.now();
 
@@ -39,10 +42,29 @@ List<CalendarEventData> _events = [
   ),
 ];
 
-void main() {
-  runApp(const MainApp());
-}
+// void main() {
+//   runApp(const MainApp());
+// }
 
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp();
+//   runApp(const MainApp());
+// }
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => StudentProvider()),
+      ],
+      child: const MainApp(),
+    ),
+  );
+}
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 

@@ -1,21 +1,81 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../providers/student_provider.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
 
   @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  bool _isLoading = true;
+  Map<String, dynamic> _userData = {};
+  String _userId = 'user123'; // Replace with actual user ID from auth
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final docSnapshot = await FirebaseFirestore.instance
+          .collection('Students')
+          .doc(_userId)
+          .get();
+
+      if (docSnapshot.exists) {
+        setState(() {
+          _userData = docSnapshot.data() as Map<String, dynamic>;
+        });
+      } else {
+        // Create a default profile if none exists
+        final defaultProfile = {
+          'Id': _userId,
+          'Name': 'New User',
+          'Major': 'Select Major',
+          'Faculty': 'Select Faculty',
+          'GPA': 0.0,
+          'Semester': 1,
+          'Catalog': '2024-2025',
+          'Preferences': 'Default preferences',
+          'FirstSemester': 'Fall 2024',
+        };
+        
+        await FirebaseFirestore.instance
+            .collection('Students')
+            .doc(_userId)
+            .set(defaultProfile);
+            
+        setState(() {
+          _userData = defaultProfile;
+        });
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+      // Show error message if needed
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Sample profile data - replace with actual user data
-    final Map<String, dynamic> userProfile = {
-      'name': 'John Doe',
-      'major': 'cyber security',
-      'gpa': 90.0,
-      'faculty': 'Computer Science',
-      'catalog': '2023-2024',
-      'preferences': 'Dark theme, Calendar notifications enabled, Priority for math courses',
-      'currentSemester': 2,
-      'firstSemester': 'Fall 2023',
-    };
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -46,7 +106,7 @@ class ProfilePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  userProfile['name'],
+                  _userData['Name'] ?? 'User',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -54,7 +114,7 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  userProfile['major'],
+                  _userData['Major'] ?? 'No Major Selected',
                   style: TextStyle(
                     fontSize: 18,
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
@@ -92,11 +152,11 @@ class ProfilePage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _getGpaColor(userProfile['gpa']),
+                          color: _getGpaColor(_userData['GPA'] ?? 0.0),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          userProfile['gpa'].toString(),
+                          (_userData['GPA'] ?? 0.0).toString(),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -110,10 +170,10 @@ class ProfilePage extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
-                      value: userProfile['gpa'] / 100.0, // Assuming 4.0 scale
+                      value: (_userData['GPA'] ?? 0.0) / 100.0, // Assuming 100 scale
                       minHeight: 10,
                       backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(_getGpaColor(userProfile['gpa'])),
+                      valueColor: AlwaysStoppedAnimation<Color>(_getGpaColor(_userData['GPA'] ?? 0.0)),
                     ),
                   ),
                 ],
@@ -144,18 +204,18 @@ class ProfilePage extends StatelessWidget {
                     ),
                   ),
                   const Divider(),
-                  _buildInfoRow(context, 'Faculty', userProfile['faculty'], Icons.school),
-                  _buildInfoRow(context, 'Catalog', userProfile['catalog'], Icons.book),
+                  _buildInfoRow(context, 'Faculty', _userData['Faculty'] ?? 'Not Set', Icons.school),
+                  _buildInfoRow(context, 'Catalog', _userData['Catalog'] ?? 'Not Set', Icons.book),
                   _buildInfoRow(
                     context,
                     'Current Semester', 
-                    'Semester ${userProfile['currentSemester']}', 
+                    'Semester ${_userData['Semester'] ?? 1}', 
                     Icons.calendar_today
                   ),
                   _buildInfoRow(
                     context,
                     'First Semester', 
-                    userProfile['firstSemester'], 
+                    _userData['FirstSemester'] ?? 'Not Set', 
                     Icons.calendar_month
                   ),
                 ],
@@ -189,7 +249,7 @@ class ProfilePage extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Text(
-                      userProfile['preferences'],
+                      _userData['Preferences'] ?? 'No preferences set',
                       style: TextStyle(
                         fontSize: 16,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.9),
@@ -207,7 +267,6 @@ class ProfilePage extends StatelessWidget {
           Center(
             child: ElevatedButton.icon(
               onPressed: () {
-                // Handle edit button press
                 _showEditProfileDialog(context);
               },
               icon: const Icon(Icons.edit),
@@ -232,10 +291,10 @@ class ProfilePage extends StatelessWidget {
 
   // Helper method for GPA color
   Color _getGpaColor(double gpa) {
-    if (gpa >= 3.5) return Colors.green;
-    if (gpa >= 3.0) return Colors.lightGreen;
-    if (gpa >= 2.5) return Colors.amber;
-    if (gpa >= 2.0) return Colors.orange;
+    if (gpa >= 85) return Colors.green;
+    if (gpa >= 75) return Colors.lightGreen;
+    if (gpa >= 65) return Colors.amber;
+    if (gpa >= 55) return Colors.orange;
     return Colors.red;
   }
 
@@ -280,7 +339,14 @@ class ProfilePage extends StatelessWidget {
 
   // Dialog to edit profile
   void _showEditProfileDialog(BuildContext context) {
-    // Implement your edit profile dialog here
+    // Create controllers for each field
+    final nameController = TextEditingController(text: _userData['Name']);
+    final majorController = TextEditingController(text: _userData['Major']);
+    final facultyController = TextEditingController(text: _userData['Faculty']);
+    final catalogController = TextEditingController(text: _userData['Catalog']);
+    final semesterController = TextEditingController(text: _userData['Semester'].toString());
+    final preferencesController = TextEditingController(text: _userData['Preferences']);
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -292,10 +358,37 @@ class ProfilePage extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          content: Text(
-            'Profile editing functionality coming soon!',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                ),
+                TextField(
+                  controller: majorController,
+                  decoration: const InputDecoration(labelText: 'Major'),
+                ),
+                TextField(
+                  controller: facultyController,
+                  decoration: const InputDecoration(labelText: 'Faculty'),
+                ),
+                TextField(
+                  controller: catalogController,
+                  decoration: const InputDecoration(labelText: 'Catalog'),
+                ),
+                TextField(
+                  controller: semesterController,
+                  decoration: const InputDecoration(labelText: 'Current Semester'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextField(
+                  controller: preferencesController,
+                  decoration: const InputDecoration(labelText: 'Preferences'),
+                  maxLines: 2,
+                ),
+              ],
             ),
           ),
           actions: [
@@ -304,11 +397,40 @@ class ProfilePage extends StatelessWidget {
                 Navigator.of(context).pop();
               },
               child: Text(
-                'Close',
+                'Cancel',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.secondary,
                 ),
               ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // Update Firestore with new values
+                try {
+                  await FirebaseFirestore.instance
+                      .collection('Students')
+                      .doc(_userId)
+                      .update({
+                    'Name': nameController.text,
+                    'Major': majorController.text,
+                    'Faculty': facultyController.text,
+                    'Catalog': catalogController.text,
+                    'Semester': int.tryParse(semesterController.text) ?? 1,
+                    'Preferences': preferencesController.text,
+                  });
+                  
+                  // Refresh data
+                  Navigator.of(context).pop();
+                  _fetchUserData();
+                } catch (e) {
+                  print('Error updating profile: $e');
+                  // Show error message
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+              ),
+              child: const Text('Save'),
             ),
           ],
         );
