@@ -14,10 +14,31 @@ dependencies:
   intl: ^0.18.0
   calendar_view: ^1.4.0
   
+  # State Management
+  provider: ^6.1.1
+  
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+  cloud_firestore: ^4.14.0
+  firebase_storage: ^11.6.0
+  
+  # HTTP requests for GitHub data
+  http: ^1.2.0
+  
+  # Local storage for caching
+  shared_preferences: ^2.2.2
+  
+  # JSON serialization
+  json_annotation: ^4.8.1
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
   
 flutter:
   uses-material-design: true

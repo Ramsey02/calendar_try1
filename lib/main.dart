@@ -1,68 +1,70 @@
-import 'dart:ui';
-
-import 'package:calendar_view/calendar_view.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'pages/home_page.dart';  // You'll need to create this file
-// import 'pages/course_diagram_page.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'providers/auth_provider.dart';
+import 'providers/course_provider.dart';
+import 'pages/login_page.dart';
+import 'pages/home_page.dart';
 
-DateTime get _now => DateTime.now();
-
-// Move the _events list above the main() function
-// Move the _events list above the main() function
-List<CalendarEventData> _events = [
-  CalendarEventData(
-    date: _now,
-    title: "Electrical Circuit Theory",
-    description: "004401053 - Ullman room 101",
-    startTime: DateTime(_now.year, _now.month, _now.day, 8, 0),
-    endTime: DateTime(_now.year, _now.month, _now.day, 10, 0),
-    color: Colors.blue.shade700,
-  ),
-  
-  CalendarEventData(
-    date: _now,
-    title: "Physical Electronics",
-    description: "00440124 - Meyer Building room 305",
-    startTime: DateTime(_now.year, _now.month, _now.day, 12, 30),
-    endTime: DateTime(_now.year, _now.month, _now.day, 14, 0),
-    color: Colors.green.shade700,
-  ),
-  
-  CalendarEventData(
-    date: _now.add(const Duration(days: 1)), // Next day
-    title: "Semiconductor Device Basics",
-    description: "00440127 - EE Lab room 202",
-    startTime: DateTime(_now.year, _now.month, _now.day + 1, 10, 15),
-    endTime: DateTime(_now.year, _now.month, _now.day + 1, 11, 45),
-    color: Colors.purple.shade700,
-  ),
-];
-
-void main() {
-  runApp(const MainApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return CalendarControllerProvider(
-      controller: EventController()..addAll(_events),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => CourseProvider()),
+      ],
       child: MaterialApp(
         title: 'DegreEZ',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        scrollBehavior: ScrollBehavior().copyWith(
-          dragDevices: {
-            PointerDeviceKind.trackpad,
-            PointerDeviceKind.mouse,
-            PointerDeviceKind.touch,
-          },
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        home: HomePage(),
+        home: AuthWrapper(),
       ),
     );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    
+    if (authProvider.isAuthenticated) {
+      // Load courses when authenticated
+      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      courseProvider.loadStudentCourses(authProvider.user!.uid);
+      
+      // Load current semester course data from GitHub
+      if (authProvider.student != null) {
+        String semester = authProvider.student!.currentSemester;
+        // Convert "Winter 2024/25" to "2024_200" format
+        String semesterCode = _convertToSemesterCode(semester);
+        courseProvider.loadCourseData(semesterCode);
+      }
+      
+      return HomePage();
+    } else {
+      return LoginPage();
+    }
+  }
+  
+  String _convertToSemesterCode(String semester) {
+    // Extract year and season from "Winter 2024/25" format
+    if (semester.contains('Winter')) {
+      String year = semester.split(' ')[1].split('/')[0];
+      return '${year}_200';
+    } else if (semester.contains('Spring')) {
+      String year = semester.split(' ')[1].split('/')[0];
+      return '${year}_201';
+    }
+    return '2024_200'; // Default
   }
 }
