@@ -76,4 +76,23 @@ class CourseService {
       ),
     ];
   }
+
+  // New method to add a course
+  Future<void> addCourse(String userId, String semester, Map<String, dynamic> courseData) async {
+    try {
+      // Add a new document with a generated ID
+      await _firestore
+          .collection('Students')
+          .doc(userId)
+          .collection('Courses-per-Semesters')
+          .doc(semester)
+          .collection('Courses')
+          .add(courseData);
+      print('Course added successfully!');
+    } catch (e) {
+      print('Error adding course: $e');
+      rethrow; // Re-throw the error for handling in the UI
+    }
+  }
+
 }

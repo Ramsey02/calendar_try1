@@ -8,6 +8,7 @@ import 'semester_diagram.dart'; // Import the new diagram widget
 import 'login_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/course_service.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -17,6 +18,8 @@ class HomePage extends StatefulWidget {
 
 class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
   final AuthService _authService = AuthService();
+  final CourseService _courseService = CourseService(); // Add this line
+
   String _currentPage = 'Calendar'; // Default page
   int _viewMode = 0; // 0: Week View, 1: Day View
   String _searchQuery = '';
@@ -322,6 +325,42 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
         body = _buildCalendarView();
     }
 
+  Widget _buildBody() {
+    switch (_currentPage) {
+      case 'Calendar':
+        return _buildCalendarView();
+      case 'Profile':
+        return const ProfilePage();
+      case 'Diagram':
+        return _buildDiagramView();
+      case 'Prerequisites Diagram':
+        return _buildPrerequisitesDiagramView();
+      case 'Map':
+        return _buildMapView();
+      case 'Chatbot':
+        return _buildChatbotView();
+      case 'GPA Calculator':
+        return _buildGpaCalculatorView();
+      case 'Credit':
+        return _buildCreditView();
+      default:
+        return Center(child: Text('Unknown page: $_currentPage'));
+    }
+    Widget _buildPlaceholderView(String title, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64),
+          const SizedBox(height: 16),
+          Text(title, style: TextStyle(fontSize: 24)),
+          const SizedBox(height: 8),
+          Text('Coming soon', style: TextStyle(fontSize: 16)),
+        ],
+      ),
+    );
+  }
+  }
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
@@ -341,17 +380,13 @@ class HomePageState extends State<HomePage> with CalendarDarkThemeMixin {
         ],
       ),
       drawer: _buildSideDrawer(),
-      body: _isLoading 
-          ? Center(child: CircularProgressIndicator())
-          : body,
-      floatingActionButton: _currentPage == 'Calendar'
-          ? FloatingActionButton(
-              onPressed: () {
-                _showAddEventDialog();
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
+      body: _buildBody(),
+        floatingActionButton: _currentPage == 'Calendar'
+            ? FloatingActionButton(
+                onPressed: () => _showAddCourseDialog(context),
+                child: const Icon(Icons.add),
+              )
+            : null,
     );
   }
 
@@ -857,4 +892,109 @@ Widget _buildDrawerItem(String title, IconData icon, {Function()? onTap}) {
       ),
     );
   }
+  // Method to show the Add Course dialog
+void _showAddCourseDialog(BuildContext context) {
+  final TextEditingController courseIdController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController lectureTimeController = TextEditingController();
+  final TextEditingController tutorialTimeController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Add New Course'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              TextField(
+                controller: courseIdController,
+                decoration: const InputDecoration(labelText: 'Course ID'),
+              ),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Course Name'),
+              ),
+              TextField(
+                controller: lectureTimeController,
+                decoration: const InputDecoration(labelText: 'Lecture Time (e.g., Mon 10:00-12:00)'),
+              ),
+              TextField(
+                controller: tutorialTimeController,
+                decoration: const InputDecoration(labelText: 'Tutorial Time (e.g., Tue 14:00-16:00)'),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          ElevatedButton(
+            child: const Text('Add Course'),
+            onPressed: () async {
+              if (courseIdController.text.isNotEmpty && nameController.text.isNotEmpty) {
+                final String? userId = _authService.currentUser?.uid;
+                if (userId != null) {
+                  final courseData = {
+                    'Course_Id': courseIdController.text,
+                    'Name': nameController.text,
+                    'Lecture_time': lectureTimeController.text.isEmpty ? null : lectureTimeController.text,
+                    'Tutorial_time': tutorialTimeController.text.isEmpty ? null : tutorialTimeController.text,
+                    'Final_grade': '', // Default empty grade
+                  };
+
+                  setState(() {
+                    _isLoading = true; // Show loading indicator
+                  });
+
+                  try {
+                    await _courseService.addCourse(
+                      userId,
+                      _currentSemester, // Use the current semester
+                      courseData,
+                    );
+                    // Refresh events after adding a new course
+                    _eventController.addAll(
+                      await _courseService.getStudentCoursesAsEvents(
+                        userId,
+                        _currentSemester,
+                      ),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Course added successfully!')),
+                    );
+                    Navigator.of(context).pop(); // Close the dialog
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to add course: $e')),
+                    );
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false; // Hide loading indicator
+                      });
+                    }
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('User not logged in.')),
+                  );
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Course ID and Name cannot be empty.')),
+                );
+              }
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
 }
