@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1094928913973",
+    "project_id": "calendartry1-64466",
+    "storage_bucket": "calendartry1-64466.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1094928913973:android:6e6ce5a01166264a58037c",
+        "android_client_info": {
+          "package_name": "com.technion.android.calendar_try1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCd3Grp9EvHeLaS2YKCy2oISh_WmTAPAdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

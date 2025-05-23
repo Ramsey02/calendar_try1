@@ -25,7 +25,9 @@ class CourseProvider extends ChangeNotifier {
   Future<void> loadStudentCourses(String studentId) async {
     try {
       _isLoading = true;
-      notifyListeners();
+      Future.microtask(() => notifyListeners());
+
+      // Removed notifyListeners() here to avoid calling during build
 
       // Get all semesters
       QuerySnapshot semesterSnapshot = await _firestore

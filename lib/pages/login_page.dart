@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'registration_page.dart'; // Add this import
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
@@ -139,6 +139,26 @@ class _LoginPageState extends State<LoginPage> {
                               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                             ),
                           ),
+                          const SizedBox(height: 24), // Add some spacing
+
+// TextButton to navigate to Registration Page
+TextButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => RegistrationPage()), // Make sure RegistrationPage is imported
+    );
+  },
+  child: Text(
+    'Don\'t have an account? Register here',
+    style: TextStyle(
+      color: Theme.of(context).colorScheme.secondary, // Or your preferred color
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+),
+
+const SizedBox(height: 16), // Existing help text spacing
                         ],
                       ),
                     ),

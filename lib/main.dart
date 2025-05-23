@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:calendar_view/calendar_view.dart'; // <-- Add this import
 import 'providers/auth_provider.dart';
 import 'providers/course_provider.dart';
 import 'pages/login_page.dart';
@@ -20,44 +21,58 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CourseProvider()),
       ],
-      child: MaterialApp(
-        title: 'DegreEZ',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
+      child: CalendarControllerProvider(
+        controller: EventController(), // <-- Provide the controller here
+        child: MaterialApp(
+          title: 'DegreEZ',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
+          home: AuthWrapper(),
         ),
-        home: AuthWrapper(),
       ),
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated) {
+        final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+        courseProvider.loadStudentCourses(authProvider.user!.uid);
+        if (authProvider.student != null) {
+          String semester = authProvider.student!.currentSemester;
+          String semesterCode = _convertToSemesterCode(semester);
+          courseProvider.loadCourseData(semesterCode);
+        }
+      }
+      _initialized = true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    
     if (authProvider.isAuthenticated) {
-      // Load courses when authenticated
-      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
-      courseProvider.loadStudentCourses(authProvider.user!.uid);
-      
-      // Load current semester course data from GitHub
-      if (authProvider.student != null) {
-        String semester = authProvider.student!.currentSemester;
-        // Convert "Winter 2024/25" to "2024_200" format
-        String semesterCode = _convertToSemesterCode(semester);
-        courseProvider.loadCourseData(semesterCode);
-      }
-      
       return HomePage();
     } else {
       return LoginPage();
     }
   }
-  
+
   String _convertToSemesterCode(String semester) {
-    // Extract year and season from "Winter 2024/25" format
     if (semester.contains('Winter')) {
       String year = semester.split(' ')[1].split('/')[0];
       return '${year}_200';
