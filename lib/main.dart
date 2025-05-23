@@ -13,9 +13,6 @@ import 'pages/forgot_password_page.dart';
 
 DateTime get _now => DateTime.now();
 
-// Move the _events list above the main() function
-// Move the _events list above the main() function
-
 /*
 List<CalendarEventData> _events = [
   CalendarEventData(
@@ -48,62 +45,6 @@ List<CalendarEventData> _events = [
 ];
 */
 
-// void main() {
-//   runApp(const MainApp());
-// }
-
-// void main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp();
-//   runApp(const MainApp());
-// }
-
-
-// void main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp();
-//   runApp(MaterialApp(home: FirebaseTest()));
-// }
-
-/*
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => StudentProvider()),
-      ],
-      child: const MainApp(),
-    ),
-  );
-}
-
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return CalendarControllerProvider(
-      controller: EventController()..addAll(_events),
-      child: MaterialApp(
-        title: 'DegreEZ',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        scrollBehavior: ScrollBehavior().copyWith(
-          dragDevices: {
-            PointerDeviceKind.trackpad,
-            PointerDeviceKind.mouse,
-            PointerDeviceKind.touch,
-          },
-        ),
-        home: HomePage(),
-      ),
-    );
-  }
-}
-*/
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
